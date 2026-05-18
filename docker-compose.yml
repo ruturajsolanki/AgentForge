@@ -1,0 +1,36 @@
+services:
+  agentforge:
+    build: .
+    ports:
+      - "8000:8000"
+      - "3001-3050:3001-3050"
+    environment:
+      - AGENTFORGE_PROVIDER=${AGENTFORGE_PROVIDER:-ollama}
+      - AGENTFORGE_API_KEY=${AGENTFORGE_API_KEY:-}
+      - AGENTFORGE_MODEL=${AGENTFORGE_MODEL:-mistral}
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - AGENTFORGE_VECTOR_BACKEND=numpy
+      - AGENTFORGE_PROJECTS_DIR=/data/projects
+      - AGENTFORGE_DB_PATH=/data/agentforge.db
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
+    volumes:
+      - agentforge_projects:/data/projects
+      - agentforge_db:/data
+    depends_on:
+      ollama:
+        condition: service_started
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  agentforge_projects:
+  agentforge_db:
+  ollama_data:

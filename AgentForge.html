@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentForge — Technical Document</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Times New Roman', 'Georgia', serif;
+            background: #fff;
+            color: #111;
+            line-height: 1.8;
+            font-size: 12pt;
+        }
+
+        .container {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 4rem;
+        }
+
+        /* ── Title page ──────────────── */
+        .title-page {
+            text-align: center;
+            padding: 5rem 0 3rem;
+            page-break-after: always;
+        }
+        .title-page h1 { font-size: 28pt; margin-bottom: 0.5rem; }
+        .title-page h3 { font-size: 14pt; font-weight: normal; color: #444; margin-bottom: 2rem; }
+        .title-page .meta { font-size: 11pt; color: #555; margin-top: 3rem; }
+
+        /* ── Headings ────────────────── */
+        h2 {
+            font-size: 18pt;
+            margin: 2.5rem 0 0.75rem;
+            padding-bottom: 0.3rem;
+            border-bottom: 1px solid #ccc;
+        }
+        h3 { font-size: 14pt; margin: 1.75rem 0 0.5rem; }
+        h4 { font-size: 12pt; margin: 1.25rem 0 0.4rem; }
+
+        p { margin: 0.6rem 0; text-align: justify; }
+
+        strong { font-weight: 700; }
+
+        blockquote {
+            border-left: 3px solid #999;
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            font-style: italic;
+            color: #333;
+        }
+
+        code {
+            font-family: 'Courier New', monospace;
+            font-size: 10pt;
+            background: #f4f4f4;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid #ddd;
+            margin: 2rem 0;
+        }
+
+        /* ── Tables ──────────────────── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 10.5pt;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 0.45rem 0.6rem;
+            text-align: left;
+            vertical-align: top;
+        }
+        th { background: #f5f5f5; font-weight: 700; }
+
+        /* ── Lists ───────────────────── */
+        ul, ol { margin: 0.5rem 0 0.5rem 1.5rem; }
+        li { margin: 0.25rem 0; }
+
+        /* ── Diagrams ────────────────── */
+        .diagram-wrap {
+            margin: 1.5rem 0;
+            text-align: center;
+            page-break-inside: avoid;
+        }
+        .diagram-wrap .mermaid {
+            display: inline-block;
+            max-width: 100%;
+        }
+        .diagram-wrap .mermaid svg {
+            max-width: 100% !important;
+            height: auto !important;
+        }
+        .diagram-label {
+            font-size: 10pt;
+            color: #555;
+            font-style: italic;
+            margin-bottom: 0.75rem;
+        }
+
+        /* ── Agent cards (plain) ─────── */
+        .agent-section { margin: 1rem 0; }
+        .agent-section h4 { border-bottom: 1px dotted #ccc; padding-bottom: 0.2rem; }
+        .agent-section .subtitle { font-size: 10.5pt; color: #666; margin-bottom: 0.4rem; font-style: italic; }
+
+        /* ── Numbered steps ──────────── */
+        .steps { counter-reset: step; list-style: none; margin-left: 0; padding-left: 1.5rem; }
+        .steps li { counter-increment: step; margin: 0.6rem 0; }
+        .steps li::before { content: counter(step) ". "; font-weight: 700; }
+
+        /* ── Page-break helpers ──────── */
+        .page-break { page-break-before: always; }
+        .no-break { page-break-inside: avoid; }
+
+        /* ── TOC ─────────────────────── */
+        .toc { margin: 1.5rem 0; }
+        .toc h3 { margin-top: 0; }
+        .toc ol { margin-left: 1.2rem; }
+        .toc li { margin: 0.3rem 0; }
+        .toc a { color: #111; text-decoration: none; }
+
+        /* ── Print styles ────────────── */
+        @media print {
+            body { font-size: 11pt; }
+            .container { max-width: 100%; padding: 0; }
+            .diagram-wrap { page-break-inside: avoid; }
+            h2 { page-break-after: avoid; }
+            h3 { page-break-after: avoid; }
+            table { page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- ═══════════════════ TITLE PAGE ═══════════════════ -->
+    <div class="title-page">
+        <h1>AgentForge</h1>
+        <h3>A Local Multi-Agent AI Software Development Environment</h3>
+        <hr>
+        <div class="meta">
+            <p>Technical Design Document</p>
+            <p>Version 1.0 — March 2026</p>
+        </div>
+    </div>
+
+    <!-- ═══════════════════ TOC ═══════════════════ -->
+    <div class="toc">
+        <h3>Table of Contents</h3>
+        <ol>
+            <li><a href="#abstract">Abstract</a></li>
+            <li><a href="#vision">Vision</a></li>
+            <li><a href="#core-concept">Core Concept</a></li>
+            <li><a href="#system-overview">System Overview &amp; Architecture</a></li>
+            <li><a href="#agent-architecture">Agent Architecture &amp; Interaction</a></li>
+            <li><a href="#agent-roles">Agent Roles</a></li>
+            <li><a href="#agent-workflow">Agent Workflow &amp; Execution</a></li>
+            <li><a href="#workspace">Visual Workspace Concept</a></li>
+            <li><a href="#local-ai">Local AI Execution</a></li>
+            <li><a href="#realtime">Real-Time Communication</a></li>
+            <li><a href="#notifications">Browser Notification System</a></li>
+            <li><a href="#storage">Storage System</a></li>
+            <li><a href="#example">Example Execution Scenario</a></li>
+            <li><a href="#principles">Design Principles</a></li>
+            <li><a href="#tech-stack">Technology Stack</a></li>
+            <li><a href="#future">Future Extensions</a></li>
+            <li><a href="#conclusion">Conclusion</a></li>
+        </ol>
+    </div>
+
+    <hr>
+
+    <!-- ═══════════════════ 1. ABSTRACT ═══════════════════ -->
+    <h2 id="abstract">1. Abstract</h2>
+    <p>
+        AgentForge is a browser-based multi-agent AI system designed to simulate a real software development organization.
+        Instead of relying on a single AI model to complete tasks, AgentForge coordinates multiple specialized AI agents that
+        collaboratively design, develop, test, and document software projects.
+    </p>
+    <p>
+        The system runs entirely on a local machine and uses lightweight local language models (≤ 7 GB) to enable
+        private, offline AI orchestration.
+    </p>
+    <p>
+        AgentForge introduces a visual and interactive interface where each AI agent behaves like a team member in a digital workspace.
+        Users can observe real-time collaboration between agents such as a Project Manager, Frontend Developer, Backend Engineer,
+        DevOps Specialist, QA Tester, and Documentation Writer.
+    </p>
+    <p>
+        This system demonstrates how multi-agent architectures can emulate real-world engineering workflows while remaining
+        accessible on consumer hardware.
+    </p>
+
+    <hr>
+
+    <!-- ═══════════════════ 2. VISION ═══════════════════ -->
+    <h2 id="vision">2. Vision</h2>
+    <p>
+        Traditional AI systems operate as a single agent responding to prompts. Complex tasks such as software development
+        naturally require collaboration between multiple specialized roles. AgentForge explores a new paradigm where AI systems
+        replicate the structure of real engineering teams.
+    </p>
+
+    <p><strong>Traditional approach:</strong></p>
+    <p style="text-align:center; font-family: monospace; margin: 0.5rem 0;">User → Single AI → Output</p>
+
+    <p><strong>AgentForge approach:</strong></p>
+    <p style="text-align:center; font-family: monospace; margin: 0.5rem 0;">User → Project Manager Agent → Distributed Agent Tasks → Integrated Output</p>
+
+    <p>This approach enables:</p>
+    <table>
+        <thead><tr><th>Capability</th><th>Description</th></tr></thead>
+        <tbody>
+            <tr><td>Modular Intelligence</td><td>Each agent owns a well-defined domain of expertise</td></tr>
+            <tr><td>Specialized Problem Solving</td><td>Agents apply domain-specific reasoning to their tasks</td></tr>
+            <tr><td>Parallel Task Execution</td><td>Independent tasks run concurrently across agents</td></tr>
+            <tr><td>Traceable Workflows</td><td>Every decision, output, and handoff is logged and visible</td></tr>
+        </tbody>
+    </table>
+
+    <hr>
+
+    <!-- ═══════════════════ 3. CORE CONCEPT ═══════════════════ -->
+    <h2 id="core-concept">3. Core Concept</h2>
+    <p>AgentForge functions as a <strong>local AI development company</strong> operating inside the browser. The user provides a prompt such as:</p>
+    <blockquote>"Build a full-stack portfolio website with authentication."</blockquote>
+    <p>The system then orchestrates a team of AI agents that collaborate to produce the result. Each agent has:</p>
+    <ul>
+        <li>A defined role</li>
+        <li>A specific task domain</li>
+        <li>Communication with other agents</li>
+        <li>Visible progress in the UI</li>
+    </ul>
+    <p>The user can observe this collaboration in real time.</p>
+
+    <hr>
+
+    <!-- ═══════════════════ 4. SYSTEM OVERVIEW ═══════════════════ -->
+    <h2 id="system-overview">4. System Overview</h2>
+    <p>AgentForge consists of five primary subsystems:</p>
+    <div class="no-break">
+    <table>
+        <thead><tr><th>#</th><th>Subsystem</th><th>Purpose</th></tr></thead>
+        <tbody>
+            <tr><td>1</td><td>User Interface Layer</td><td>Browser dashboard for prompt input, monitoring, and output review</td></tr>
+            <tr><td>2</td><td>Agent Orchestration Layer</td><td>Central engine that decomposes tasks, assigns work, and manages dependencies</td></tr>
+            <tr><td>3</td><td>AI Execution Layer</td><td>Local LLM runtime powering each agent's reasoning</td></tr>
+            <tr><td>4</td><td>Communication Layer</td><td>Real-time event streaming between backend and browser</td></tr>
+            <tr><td>5</td><td>Storage Layer</td><td>Persistent storage for project files, logs, and agent memory</td></tr>
+        </tbody>
+    </table>
+    </div>
+
+    <h3>4.1 High-Level Architecture</h3>
+    <div class="diagram-wrap">
+        <div class="diagram-label">Figure 1: AgentForge High-Level Architecture</div>
+        <pre class="mermaid">
+flowchart TB
+    subgraph UI["User Interface Layer"]
+        direction LR
+        PROMPT["Prompt Input"]
+        DASH["Agent Dashboard"]
+        OUTPUT["Output Viewer"]
+    end
+
+    subgraph ORCH["Orchestration Layer"]
+        direction LR
+        PM["Project Manager"]
+        TQ["Task Queue"]
+        DEP["Dependency Resolver"]
+    end
+
+    subgraph AGENTS["Agent Pool"]
+        direction LR
+        FE["Frontend Agent"]
+        BE["Backend Agent"]
+        DEVOPS["DevOps Agent"]
+        QA["QA Agent"]
+        DOCS["Docs Agent"]
+    end
+
+    subgraph AI_LAYER["AI Execution Layer"]
+        direction LR
+        LLM_IF["LLM Interface"]
+        OLLAMA["Ollama Runtime"]
+        MODELS["Local Models ≤ 7 GB"]
+    end
+
+    subgraph STORAGE["Storage Layer"]
+        direction LR
+        FS["Project Files"]
+        SQLITE["SQLite DB"]
+        VECDB["Vector Store"]
+    end
+
+    subgraph COMM["Communication Layer"]
+        direction LR
+        WS["WebSocket Server"]
+        EVT["Event Stream"]
+    end
+
+    UI -->|"user prompt"| ORCH
+    ORCH -->|"assign tasks"| AGENTS
+    AGENTS -->|"inference requests"| AI_LAYER
+    AGENTS -->|"status and results"| COMM
+    COMM -->|"live updates"| UI
+    AGENTS -->|"persist artifacts"| STORAGE
+    ORCH -->|"read/write state"| STORAGE
+        </pre>
+    </div>
+
+    <hr>
+
+    <!-- ═══════════════════ 5. AGENT ARCHITECTURE ═══════════════════ -->
+    <h2 id="agent-architecture">5. Agent Architecture</h2>
+    <p>
+        Each AI agent represents a specialized role in a software development team.
+        Agents operate independently but communicate through a centralized orchestrator.
+        They receive tasks, generate outputs, and report status back.
+    </p>
+
+    <h3>5.1 Agent Interaction Model</h3>
+    <div class="diagram-wrap">
+        <div class="diagram-label">Figure 2: Agent Interaction and Data Flow</div>
+        <pre class="mermaid">
+flowchart TD
+    USER["User Prompt"] -->|"submits"| PM["Project Manager Agent"]
+    PM -->|"analyzes and decomposes"| TD["Task Decomposition"]
+
+    TD -->|"distributes"| FE["Frontend Developer"]
+    TD -->|"distributes"| BE["Backend Developer"]
+    TD -->|"distributes"| DEVOPS["DevOps Engineer"]
+    TD -->|"distributes"| QA["QA Tester"]
+    TD -->|"distributes"| DOCS["Documentation Writer"]
+
+    FE -->|"results"| AGG["Output Aggregator"]
+    BE -->|"results"| AGG
+    DEVOPS -->|"results"| AGG
+    QA -->|"results"| AGG
+    DOCS -->|"results"| AGG
+
+    AGG -->|"final project"| FINAL["Generated Project"]
+
+    QA -.->|"bug feedback"| FE
+    QA -.->|"bug feedback"| BE
+    PM -.->|"coordination"| FE
+    PM -.->|"coordination"| BE
+    PM -.->|"coordination"| DEVOPS
+        </pre>
+    </div>
+
+    <hr>
+
+    <!-- ═══════════════════ 6. AGENT ROLES ═══════════════════ -->
+    <h2 id="agent-roles">6. Agent Roles</h2>
+
+    <div class="agent-section no-break">
+        <h4>6.1 Project Manager Agent</h4>
+        <div class="subtitle">Planning and Coordination</div>
+        <p>The Project Manager agent acts as the central planning intelligence. It is the first agent to receive the user prompt and the last to sign off on the final output. Responsibilities:</p>
+        <ul>
+            <li>Analyze the user prompt and identify requirements</li>
+            <li>Break the project into actionable tasks</li>
+            <li>Assign tasks to specialized agents</li>
+            <li>Coordinate progress and resolve dependencies</li>
+        </ul>
+    </div>
+
+    <div class="agent-section no-break">
+        <h4>6.2 Frontend Developer Agent</h4>
+        <div class="subtitle">UI and Client-Side Development</div>
+        <p>Responsibilities:</p>
+        <ul>
+            <li>UI/UX design and implementation</li>
+            <li>Frontend framework setup (React, Vue, etc.)</li>
+            <li>Component generation and layout implementation</li>
+            <li>Client-side logic and styling</li>
+        </ul>
+        <p>Typical outputs: React components, CSS styling, frontend project structure.</p>
+    </div>
+
+    <div class="agent-section no-break">
+        <h4>6.3 Backend Developer Agent</h4>
+        <div class="subtitle">API and Server-Side Development</div>
+        <p>Responsibilities:</p>
+        <ul>
+            <li>API route development</li>
+            <li>Database schema design and integration</li>
+            <li>Authentication systems</li>
+            <li>Business logic implementation</li>
+        </ul>
+        <p>Typical outputs: backend services, API routes, database schemas.</p>
+    </div>
+
+    <div class="agent-section no-break">
+        <h4>6.4 DevOps Agent</h4>
+        <div class="subtitle">Infrastructure and Configuration</div>
+        <p>Responsibilities:</p>
+        <ul>
+            <li>Environment setup and containerization</li>
+            <li>Project configuration and runtime environment</li>
+            <li>Deployment scripts</li>
+        </ul>
+        <p>Typical outputs: Dockerfiles, environment configuration, deployment scripts.</p>
+    </div>
+
+    <div class="agent-section no-break">
+        <h4>6.5 QA Testing Agent</h4>
+        <div class="subtitle">Quality Assurance and Validation</div>
+        <p>Responsibilities:</p>
+        <ul>
+            <li>Error detection and validation testing</li>
+            <li>Output verification</li>
+            <li>Integration consistency checks</li>
+        </ul>
+    </div>
+
+    <div class="agent-section no-break">
+        <h4>6.6 Documentation Agent</h4>
+        <div class="subtitle">Technical Writing</div>
+        <p>Responsibilities:</p>
+        <ul>
+            <li>Generate README files and architecture documentation</li>
+            <li>Create setup guides and usage instructions</li>
+            <li>Produce API documentation</li>
+        </ul>
+    </div>
+
+    <h3>6.7 Agent Communication Summary</h3>
+    <div class="no-break">
+    <table>
+        <thead><tr><th>Agent</th><th>Receives From</th><th>Sends To</th></tr></thead>
+        <tbody>
+            <tr><td>Project Manager</td><td>User (prompt)</td><td>All agents (task assignments)</td></tr>
+            <tr><td>Frontend Dev</td><td>PM (specs), Backend (API contracts)</td><td>QA (artifacts), Aggregator</td></tr>
+            <tr><td>Backend Dev</td><td>PM (specs)</td><td>Frontend (API contracts), QA, Aggregator</td></tr>
+            <tr><td>DevOps</td><td>PM, Backend</td><td>Aggregator</td></tr>
+            <tr><td>QA Tester</td><td>Frontend, Backend (artifacts)</td><td>PM (issues), Aggregator</td></tr>
+            <tr><td>Documentation</td><td>All agents (context)</td><td>Aggregator</td></tr>
+        </tbody>
+    </table>
+    </div>
+
+    <hr>
+
+    <!-- ═══════════════════ 7. WORKFLOW ═══════════════════ -->
+    <h2 id="agent-workflow">7. Agent Workflow</h2>
+    <p>AgentForge operates using a structured development pipeline with well-defined stages.</p>
+
+    <h3>7.1 Task Execution Flow</h3>
+    <div class="diagram-wrap">
+        <div class="diagram-label">Figure 3: Linear Execution Pipeline</div>
+        <pre class="mermaid">
+flowchart LR
+    A["User Prompt"] --> B["Project Manager"]
+    B --> C["Task Decomposition"]
+    C --> D["Task Queue"]
+    D --> E
+
+    subgraph E["Parallel Agent Execution"]
+        direction TB
+        FE["Frontend"]
+        BE["Backend"]
+        DV["DevOps"]
+        QA["QA"]
+        DC["Docs"]
+    end
+
+    E --> F["Output Aggregation"]
+    F --> G["Generated Project"]
+        </pre>
+    </div>
+
+    <h3>7.2 Detailed Execution Sequence</h3>
+    <div class="diagram-wrap">
+        <div class="diagram-label">Figure 4: Message Passing Sequence</div>
+        <pre class="mermaid">
+sequenceDiagram
+    actor User
+    participant PM as Project Manager
+    participant TQ as Task Queue
+    participant FE as Frontend Agent
+    participant BE as Backend Agent
+    participant DV as DevOps Agent
+    participant QA as QA Agent
+    participant DC as Docs Agent
+    participant OUT as Output
+
+    User->>PM: Submit project prompt
+    PM->>PM: Analyze requirements
+    PM->>TQ: Decompose into tasks
+
+    par Parallel Execution
+        TQ->>FE: UI tasks
+        TQ->>BE: API tasks
+        TQ->>DV: Infra tasks
+    end
+
+    FE->>QA: UI artifacts
+    BE->>QA: API artifacts
+    DV->>OUT: Config files
+
+    QA->>QA: Validate and test
+    QA-->>FE: Bug reports (if any)
+    QA-->>BE: Bug reports (if any)
+    QA->>OUT: Test results
+
+    FE->>OUT: Final UI code
+    BE->>OUT: Final API code
+
+    PM->>DC: All context
+    DC->>OUT: Documentation
+
+    OUT->>User: Complete project
+        </pre>
+    </div>
+
+    <hr>
+
+    <!-- ═══════════════════ 8. WORKSPACE ═══════════════════ -->
+    <h2 id="workspace">8. Visual Workspace Concept</h2>
+    <p>
+        AgentForge includes a visual dashboard that simulates a digital software company workspace.
+        Each agent appears as a card or workspace module that displays:
+    </p>
+    <ul>
+        <li><strong>Agent role</strong> — name and specialization</li>
+        <li><strong>Current task</strong> — active assignment from the orchestrator</li>
+        <li><strong>Progress status</strong> — visual completion bar</li>
+        <li><strong>Logs</strong> — real-time output stream</li>
+        <li><strong>Outputs</strong> — generated files and artifacts</li>
+    </ul>
+    <p>The UI updates in real time as agents execute their tasks.</p>
+
+    <div class="diagram-wrap">
+        <div class="diagram-label">Figure 5: Workspace Dashboard Layout Concept</div>
+        <pre class="mermaid">
+graph TD
+    subgraph DASHBOARD["AgentForge Workspace Dashboard"]
+        direction TB
+        PROMPT["User Prompt Input Bar"]
+
+        subgraph ROW1["Agent Cards — Row 1"]
+            direction LR
+            PM["Project Manager\n Status: Active\n Task: Decomposing prompt\n Progress: 80%"]
+            FE["Frontend Developer\n Status: Working\n Task: Building components\n Progress: 60%"]
+            BE["Backend Developer\n Status: Working\n Task: Creating API routes\n Progress: 40%"]
+        end
+
+        subgraph ROW2["Agent Cards — Row 2"]
+            direction LR
+            DV["DevOps Engineer\n Status: Working\n Task: Writing Dockerfile\n Progress: 90%"]
+            QA["QA Tester\n Status: Waiting\n Task: Pending artifacts\n Progress: 0%"]
+            DC["Documentation Writer\n Status: Waiting\n Task: Pending completion\n Progress: 0%"]
+        end
+
+        LOGS["Live Log Panel"]
+    end
+
+    PROMPT --> ROW1
+    ROW1 --> ROW2
+    ROW2 --> LOGS
+        </pre>
+    </div>
+
+    <hr>
+
+    <!-- ═══════════════════ 9. LOCAL AI ═══════════════════ -->
+    <h2 id="local-ai">9. Local AI Execution</h2>
+    <p>AgentForge runs AI models locally using lightweight LLMs. This ensures:</p>
+    <ul>
+        <li><strong>Privacy</strong> — no data leaves the machine</li>
+        <li><strong>Offline operation</strong> — zero internet dependency</li>
+        <li><strong>No API costs</strong> — no external service billing</li>
+        <li><strong>Full user control</strong> — model selection and configuration</li>
+    </ul>
+
+    <h3>9.1 Local Model Architecture</h3>
+    <div class="diagram-wrap">
+        <div class="diagram-label">Figure 6: AI Execution Layer</div>
+        <pre class="mermaid">
+flowchart TB
+    subgraph AGENTS["Agent Pool"]
+        direction LR
+        FE["Frontend"]
+        BE["Backend"]
+        PM["PM"]
+        QA["QA"]
+        DV["DevOps"]
+        DC["Docs"]
+    end
+
+    subgraph IFACE["LLM Interface Layer"]
+        direction LR
+        ROUTER["Model Router"]
+        PE["Prompt Engineering"]
+        CTX["Context Manager"]
+    end
+
+    subgraph RUNTIME["Local Model Runtime"]
+        OLLAMA["Ollama Engine"]
+    end
+
+    subgraph MODELS["Local LLM Models"]
+        direction LR
+        CODE["Code Model\n e.g. CodeLlama 7B"]
+        PLAN["Planning Model\n e.g. Mistral 7B"]
+        GEN["General Reasoning\n e.g. Llama 3 8B"]
+    end
+
+    AGENTS -->|"inference request"| IFACE
+    IFACE -->|"formatted prompt"| RUNTIME
+    RUNTIME -->|"model selection"| MODELS
+    MODELS -->|"completion"| RUNTIME
+    RUNTIME -->|"response"| IFACE
+    IFACE -->|"parsed output"| AGENTS
+        </pre>
+    </div>
+
+    <h3>9.2 Model Selection Strategy</h3>
+    <div class="no-break">
+    <table>
+        <thead><tr><th>Agent</th><th>Recommended Model Type</th><th>Reasoning</th></tr></thead>
+        <tbody>
+            <tr><td>Project Manager</td><td>Planning / Reasoning</td><td>Strong decomposition and planning capabilities</td></tr>
+            <tr><td>Frontend Agent</td><td>Code Generation</td><td>Optimized for HTML, CSS, JavaScript, React</td></tr>
+            <tr><td>Backend Agent</td><td>Code Generation</td><td>Optimized for Python, Node.js, SQL</td></tr>
+            <tr><td>DevOps Agent</td><td>Code Generation</td><td>Docker, YAML, shell scripting</td></tr>
+            <tr><td>QA Agent</td><td>General Reasoning</td><td>Analysis, comparison, error detection</td></tr>
+            <tr><td>Documentation Agent</td><td>General Reasoning</td><td>Natural language generation, technical writing</td></tr>
+        </tbody>
+    </table>
+    </div>
+
+    <hr>
+
+    <!-- ═══════════════════ 10. REAL-TIME ═══════════════════ -->
+    <h2 id="realtime">10. Real-Time Communication System</h2>
+    <p>The system includes real-time updates between backend processes and the browser interface, enabling live agent status updates, task progress visualization, log streaming, and execution monitoring.</p>
+
+    <h3>10.1 Communication Flow</h3>
+    <div class="diagram-wrap">
+        <div class="diagram-label">Figure 7: Real-Time Event Flow</div>
+        <pre class="mermaid">
+flowchart LR
+    subgraph BACK["Backend"]
+        A1["Agent 1"]
+        A2["Agent 2"]
+        A3["Agent N"]
+        EB["Event Bus"]
+    end
+
+    subgraph SRV["Server"]
+        WS["WebSocket Server"]
+    end
+
+    subgraph BROWSER["Browser"]
+        EH["Event Handler"]
+        SM["State Manager"]
+        RN["UI Renderer"]
+    end
+
+    A1 -->|"status"| EB
+    A2 -->|"log"| EB
+    A3 -->|"output"| EB
+    EB -->|"publish"| WS
+    WS -->|"push"| EH
+    EH -->|"update"| SM
+    SM -->|"re-render"| RN
+        </pre>
+    </div>
+
+    <h3>10.2 Event Types</h3>
+    <div class="no-break">
+    <table>
+        <thead><tr><th>Event</th><th>Source</th><th>Payload</th></tr></thead>
+        <tbody>
+            <tr><td><code>agent.started</code></td><td>Orchestrator</td><td>agentId, taskId, timestamp</td></tr>
+            <tr><td><code>agent.progress</code></td><td>Agent</td><td>agentId, percentage, message</td></tr>
+            <tr><td><code>agent.log</code></td><td>Agent</td><td>agentId, level, content</td></tr>
+            <tr><td><code>agent.output</code></td><td>Agent</td><td>agentId, files, artifacts</td></tr>
+            <tr><td><code>agent.completed</code></td><td>Agent</td><td>agentId, taskId, duration</td></tr>
+            <tr><td><code>agent.error</code></td><td>Agent</td><td>agentId, error, stackTrace</td></tr>
+            <tr><td><code>project.completed</code></td><td>Orchestrator</td><td>projectId, outputPath</td></tr>
+        </tbody>
+    </table>
+    </div>
+
+    <hr>
+
+    <!-- ═══════════════════ 11. NOTIFICATIONS ═══════════════════ -->
+    <h2 id="notifications">11. Browser Notification System</h2>
+    <p>AgentForge includes a local browser notification system. Users receive alerts when key events occur.</p>
+
+    <div class="diagram-wrap">
+        <div class="diagram-label">Figure 8: Notification Pipeline</div>
+        <pre class="mermaid">
+flowchart LR
+    AGENT["Agent Completes Task"]
+    --> EVT["Event Generated"]
+    --> SVC["Notification Service"]
+    --> NOTIF["Browser Notification"]
+    SVC -->|"also"| TOAST["In-App Toast"]
+        </pre>
+    </div>
+
+    <p>Notification triggers include: task started, task completed, project finished, error detected, and agent waiting on dependency.</p>
+
+    <hr>
+
+    <!-- ═══════════════════ 12. STORAGE ═══════════════════ -->
+    <h2 id="storage">12. Storage System</h2>
+    <p>The system stores generated artifacts locally across three storage tiers.</p>
+
+    <div class="diagram-wrap">
+        <div class="diagram-label">Figure 9: Storage Architecture</div>
+        <pre class="mermaid">
+flowchart TB
+    ORCH["Orchestrator"] --> PROJECT
+    ORCH --> MEMORY
+    ORCH --> VECTOR
+
+    subgraph PROJECT["Project Output Storage"]
+        SRC["src/"]
+        CFG["config/"]
+        DOCKER["Dockerfile"]
+        README["README.md"]
+        PKG["package.json"]
+    end
+
+    subgraph MEMORY["Agent Memory — SQLite"]
+        TASKS["Task History"]
+        ALOG["Agent Logs"]
+        META["Project Metadata"]
+    end
+
+    subgraph VECTOR["Vector Knowledge Store"]
+        EMB["Code Embeddings"]
+        CTX["Context Chunks"]
+        SEM["Semantic Index"]
+    end
+        </pre>
+    </div>
+
+    <div class="no-break">
+    <table>
+        <thead><tr><th>Storage Tier</th><th>Technology</th><th>Purpose</th></tr></thead>
+        <tbody>
+            <tr><td>Project Output</td><td>Local filesystem</td><td>Generated source code, configs, and assets</td></tr>
+            <tr><td>Agent Memory</td><td>SQLite</td><td>Task history, logs, metadata, agent state</td></tr>
+            <tr><td>Vector Store</td><td>Google ScaNN</td><td>Semantic search over code and context</td></tr>
+        </tbody>
+    </table>
+    </div>
+
+    <hr>
+
+    <!-- ═══════════════════ 13. EXAMPLE ═══════════════════ -->
+    <h2 id="example">13. Example Execution Scenario</h2>
+    <p>User prompt:</p>
+    <blockquote>"Create a full-stack portfolio website with authentication."</blockquote>
+
+    <h3>13.1 Execution Timeline</h3>
+    <div class="diagram-wrap">
+        <div class="diagram-label">Figure 10: Gantt Timeline</div>
+        <pre class="mermaid">
+gantt
+    title AgentForge Execution Timeline
+    dateFormat X
+    axisFormat %s s
+
+    section Project Manager
+        Analyze prompt           :done, pm1, 0, 5
+        Decompose into tasks     :done, pm2, 5, 12
+        Distribute to agents     :done, pm3, 12, 15
+
+    section Frontend Agent
+        Scaffold React project   :active, fe1, 15, 25
+        Build components         :fe2, 25, 45
+        Implement styling        :fe3, 45, 55
+
+    section Backend Agent
+        Setup Express server     :active, be1, 15, 22
+        Create API routes        :be2, 22, 35
+        Implement auth           :be3, 35, 50
+
+    section DevOps Agent
+        Generate Dockerfile      :active, dv1, 15, 22
+        Write env config         :dv2, 22, 28
+
+    section QA Agent
+        Validate frontend        :qa1, 55, 65
+        Validate backend         :qa2, 50, 62
+        Integration check        :qa3, 65, 72
+
+    section Docs Agent
+        Generate README          :dc1, 72, 80
+        Write setup guide        :dc2, 80, 85
+
+    section Output
+        Aggregate and deliver    :crit, out1, 85, 90
+        </pre>
+    </div>
+
+    <h3>13.2 Step-by-Step Breakdown</h3>
+    <div class="no-break">
+    <table>
+        <thead><tr><th>Step</th><th>Agent</th><th>Action</th><th>Output</th></tr></thead>
+        <tbody>
+            <tr><td>1</td><td>Project Manager</td><td>Analyze prompt, identify requirements</td><td>Task list with 12 subtasks</td></tr>
+            <tr><td>2</td><td>Project Manager</td><td>Distribute tasks to agents</td><td>Task assignments</td></tr>
+            <tr><td>3</td><td>Frontend Agent</td><td>Scaffold React project, build components</td><td>src/components/, App.jsx, CSS</td></tr>
+            <tr><td>4</td><td>Backend Agent</td><td>Create Express server, API routes, auth</td><td>server.js, routes/, models/</td></tr>
+            <tr><td>5</td><td>DevOps Agent</td><td>Generate Dockerfile, env config</td><td>Dockerfile, .env.example</td></tr>
+            <tr><td>6</td><td>QA Agent</td><td>Validate outputs, check integration</td><td>Test report, error log</td></tr>
+            <tr><td>7</td><td>Documentation Agent</td><td>Generate README, setup guide</td><td>README.md, SETUP.md</td></tr>
+            <tr><td>8</td><td>Orchestrator</td><td>Aggregate all outputs</td><td>Complete project directory</td></tr>
+        </tbody>
+    </table>
+    </div>
+
+    <hr>
+
+    <!-- ═══════════════════ 14. PRINCIPLES ═══════════════════ -->
+    <h2 id="principles">14. Design Principles</h2>
+
+    <div class="diagram-wrap">
+        <div class="diagram-label">Figure 11: Core Design Principles</div>
+        <pre class="mermaid">
+mindmap
+  root((AgentForge Principles))
+    Modularity
+      Defined agent roles
+      Independently replaceable
+      Clean interfaces
+    Transparency
+      Observable decisions
+      Full execution logs
+      Visible task progression
+    Scalability
+      Add new agents easily
+      Multiple model backends
+      Pluggable architecture
+    Local-First
+      No external infrastructure
+      Offline capable
+      Full data privacy
+      Zero API costs
+        </pre>
+    </div>
+
+    <hr>
+
+    <!-- ═══════════════════ 15. TECH STACK ═══════════════════ -->
+    <h2 id="tech-stack">15. Technology Stack</h2>
+    <div class="no-break">
+    <table>
+        <thead><tr><th>Layer</th><th>Technology</th><th>Purpose</th></tr></thead>
+        <tbody>
+            <tr><td>Frontend</td><td>React + TypeScript</td><td>Dashboard UI</td></tr>
+            <tr><td>Backend</td><td>Node.js / Python (FastAPI)</td><td>Orchestration and API server</td></tr>
+            <tr><td>Real-Time</td><td>WebSocket (Socket.IO)</td><td>Live agent status updates</td></tr>
+            <tr><td>LLM Runtime</td><td>Ollama</td><td>Local model inference</td></tr>
+            <tr><td>Database</td><td>SQLite</td><td>Task and agent state persistence</td></tr>
+            <tr><td>Vector Store</td><td>Google ScaNN</td><td>Semantic context retrieval</td></tr>
+            <tr><td>Containerization</td><td>Docker</td><td>Reproducible runtime environment</td></tr>
+        </tbody>
+    </table>
+    </div>
+
+    <hr>
+
+    <!-- ═══════════════════ 16. FUTURE ═══════════════════ -->
+    <h2 id="future">16. Future Extensions</h2>
+    <div class="no-break">
+    <table>
+        <thead><tr><th>Extension</th><th>Description</th></tr></thead>
+        <tbody>
+            <tr><td>Security Analysis Agent</td><td>Automated vulnerability scanning and penetration testing</td></tr>
+            <tr><td>Bug-Fixing Agent</td><td>Autonomous detection and repair of code issues</td></tr>
+            <tr><td>Multi-Model Collaboration</td><td>Different LLMs specialized per agent role</td></tr>
+            <tr><td>Plugin Ecosystem</td><td>Community-contributed agent types and workflows</td></tr>
+            <tr><td>Distributed Agent Networks</td><td>Agents running across multiple machines</td></tr>
+            <tr><td>Analytics Dashboard</td><td>Historical performance metrics and optimization insights</td></tr>
+        </tbody>
+    </table>
+    </div>
+
+    <hr>
+
+    <!-- ═══════════════════ 17. CONCLUSION ═══════════════════ -->
+    <h2 id="conclusion">17. Conclusion</h2>
+    <p>
+        AgentForge demonstrates how collaborative AI agents can replicate the structure and workflow of real software engineering teams.
+        By combining multi-agent orchestration for parallel and specialized task execution, local AI models for privacy and accessibility,
+        and interactive visualization for transparency and observability, AgentForge provides a new framework for autonomous development
+        systems.
+    </p>
+    <p>
+        The system highlights the potential of decentralized AI collaboration while remaining accessible on consumer-grade hardware.
+    </p>
+
+    <hr>
+    <p style="text-align:center; color:#888; margin-top: 2rem; font-style: italic;">
+        AgentForge — Where AI agents build software together.
+    </p>
+
+</div>
+
+<script>
+    mermaid.initialize({
+        startOnLoad: true,
+        theme: 'default',
+        flowchart: { curve: 'basis', padding: 20, useMaxWidth: true },
+        sequence: { mirrorActors: false, messageMargin: 40, useMaxWidth: true },
+        gantt: {
+            titleTopMargin: 15,
+            barHeight: 22,
+            barGap: 5,
+            topPadding: 40,
+            sidePadding: 50,
+            numberSectionStyles: 6,
+            useMaxWidth: true,
+        },
+    });
+</script>
+
+</body>
+</html>
