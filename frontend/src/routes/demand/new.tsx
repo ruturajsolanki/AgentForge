@@ -89,6 +89,12 @@ export default function NewDemandRoute() {
       persistLocalPlan(nextPlan, text);
       setPlan(nextPlan);
       setOffline(false);
+      if (session?.role === "client") {
+        rememberClientSubmission(nextPlan.publicId);
+        toast.success("Demand submitted for manager review");
+        navigate(`/client?submitted=${encodeURIComponent(nextPlan.publicId)}`);
+        return;
+      }
       setStep(2);
       toast.success("Structured brief generated");
     } catch (err) {
@@ -96,6 +102,12 @@ export default function NewDemandRoute() {
       persistLocalPlan(nextPlan, text);
       setPlan(nextPlan);
       setOffline(true);
+      if (session?.role === "client") {
+        rememberClientSubmission(nextPlan.publicId);
+        toast.warning("Backend unavailable. Demand saved locally for manager review.");
+        navigate(`/client?submitted=${encodeURIComponent(nextPlan.publicId)}`);
+        return;
+      }
       setStep(2);
       toast.warning("Backend unavailable. Local plan generated for manager review.");
       setError(err instanceof Error ? err.message : String(err));
@@ -187,7 +199,7 @@ export default function NewDemandRoute() {
               right={(
                 <Button variant="primary" disabled={!text.trim() || submitting} onClick={() => void ensurePlan()}>
                   {submitting ? <Loader2 className="animate-spin" /> : <ArrowRight />}
-                  Next
+                  {session.role === "client" ? "Submit" : "Next"}
                 </Button>
               )}
             />

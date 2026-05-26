@@ -8,6 +8,7 @@ import { Button } from "../../components/ui/button";
 import { Skeleton } from "../../components/ui/skeleton";
 import { forgeApi } from "../../services/forgeApi";
 import type { Demand, DemandStage } from "../../types";
+import type { PlanShape } from "../../components/demand/PlanCard";
 import { Filters } from "./Filters";
 
 const STAGES: DemandStage[] = [
@@ -45,12 +46,12 @@ export default function DemandsRoute() {
     setLoading(true);
     forgeApi.listDemands()
       .then((rows) => {
-        setDemands(rows);
+        setDemands(mergeLocalDemands(rows));
         setError(null);
       })
       .catch((err) => {
         setError(err instanceof Error ? err.message : "Could not load demands");
-        setDemands([]);
+        setDemands(readLocalDemands());
       })
       .finally(() => setLoading(false));
   }, []);
@@ -145,4 +146,36 @@ export default function DemandsRoute() {
       )}
     </div>
   );
+}
+
+function mergeLocalDemands(rows: Demand[]) {
+  const local = readLocalDemands();
+  const seen = new Set(rows.map((demand) => demand.public_id));
+  return [...local.filter((demand) => !seen.has(demand.public_id)), ...rows];
+}
+
+function readLocalDemands(): Demand[] {
+  const demands: Demand[] = [];
+  for (let index = 0; index < window.localStorage.length; index += 1) {
+    const key = window.localStorage.key(index);
+    if (!key?.startsWith("forgeos.localDemand.")) continue;
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(key) || "") as { plan: PlanShape; rawText?: string; savedAt?: string };
+      demands.push({
+        id: parsed.plan.publicId,
+        public_id: parsed.plan.publicId,
+        stage: "awaiting_approval",
+        raw_text: parsed.rawText || parsed.plan.understanding.summary,
+        understanding: parsed.plan.understanding,
+        decision: parsed.plan.decision,
+        allocation: parsed.plan.allocation,
+        similar_projects: { matches: [] },
+        reuse_score: parsed.plan.reuseScore,
+        created_at: parsed.savedAt || new Date().toISOString(),
+      });
+    } catch {
+      // Ignore stale local drafts.
+    }
+  }
+  return demands.sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
 }
