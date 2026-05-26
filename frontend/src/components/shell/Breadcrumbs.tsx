@@ -4,6 +4,7 @@ function title(part: string) {
   if (part === "demands") return "Demands";
   if (part === "demand") return "Demand";
   if (part === "models") return "Models";
+  if (part === "team") return "Team";
   if (part === "settings") return "Settings";
   if (part === "new") return "New";
   return part.replace(/-/g, " ");

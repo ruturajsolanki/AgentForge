@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, Loader2, Rocket, X } from "lucide-react";
 import { toast } from "sonner";
 import { Gate } from "../../components/gate/Gate";
@@ -11,6 +11,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Textarea } from "../../components/ui/textarea";
 import { forgeApi } from "../../services/forgeApi";
 import type { AllocatedResource, Understanding } from "../../types";
+import { useSession } from "../../hooks/useSession";
 
 const INDUSTRIES = [
   "Banking",
@@ -47,6 +48,7 @@ type Priority = (typeof PRIORITIES)[number];
 
 export default function NewDemandRoute() {
   const navigate = useNavigate();
+  const session = useSession();
   const [searchParams] = useSearchParams();
   const seed = searchParams.get("seed") || "";
   const [step, setStep] = useState(1);
@@ -107,6 +109,12 @@ export default function NewDemandRoute() {
     setSubmitting(true);
     try {
       persistLocalPlan(plan, text);
+      if (session?.role === "client") {
+        rememberClientSubmission(plan.publicId);
+        toast.success("Demand submitted for manager review");
+        navigate(`/client?submitted=${encodeURIComponent(plan.publicId)}`);
+        return;
+      }
       if (!offline && !plan.publicId.startsWith("local-")) {
         await forgeApi.approveDemand(plan.publicId);
       }
@@ -123,17 +131,20 @@ export default function NewDemandRoute() {
   const highRisk = Boolean(plan && (plan.decision.execution_mode === "human_team" || plan.decision.risk_factors.length >= 3));
   const estimate = plan ? Math.round(plan.decision.estimated_cost_usd || plan.allocation.total_daily_cost * plan.decision.estimated_time_days) : 0;
   const agentCount = plan?.allocation.team.filter((resource) => resource.resource_type.includes("agent")).length || 0;
+  const cancelPath = session?.role === "client" ? "/client" : "/demands";
+
+  if (!session) return <Navigate to="/login" replace />;
 
   return (
     <div className="min-h-screen bg-canvas text-fg">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
-        <Link to="/demands" className="inline-flex items-center gap-2 text-sm text-fg-muted transition hover:text-fg-strong">
+        <Link to={cancelPath} className="inline-flex items-center gap-2 text-sm text-fg-muted transition hover:text-fg-strong">
           <ArrowLeft className="h-4 w-4" />
           Cancel
         </Link>
         <StepProgress step={step} />
         <Button asChild variant="ghost" size="icon" aria-label="Close wizard">
-          <Link to="/demands"><X className="h-4 w-4" /></Link>
+          <Link to={cancelPath}><X className="h-4 w-4" /></Link>
         </Button>
       </header>
 
@@ -171,7 +182,7 @@ export default function NewDemandRoute() {
               ))}
             </div>
             <WizardFooter
-              left={<Button asChild variant="ghost"><Link to="/demands">Cancel</Link></Button>}
+              left={<Button asChild variant="ghost"><Link to={cancelPath}>Cancel</Link></Button>}
               meta={`${text.length} chars captured`}
               right={(
                 <Button variant="primary" disabled={!text.trim() || submitting} onClick={() => void ensurePlan()}>
@@ -226,7 +237,9 @@ export default function NewDemandRoute() {
         {step === 3 && plan && (
           <section className="mx-auto w-full max-w-4xl pt-8">
             <p className="text-xs font-medium uppercase tracking-[0.06em] text-fg-muted">Step 3</p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.02em] text-fg-strong">Approve and launch</h1>
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.02em] text-fg-strong">
+              {session.role === "client" ? "Submit for manager review" : "Approve and launch"}
+            </h1>
             <div className="mt-6 grid gap-3 sm:grid-cols-4">
               <Metric label="Estimated cost" value={`$${estimate.toLocaleString()}`} />
               <Metric label="Token estimate" value={`${Math.max(12, Math.round(text.length * 3)).toLocaleString()}`} />
@@ -247,16 +260,16 @@ export default function NewDemandRoute() {
             </Card>
             <WizardFooter
               left={<Button variant="ghost" onClick={() => setStep(2)}>Back</Button>}
-              meta={highRisk ? "Type confirmation is required for this launch" : "Human approval required"}
+              meta={session.role === "client" ? "The manager will review team and execution mode" : highRisk ? "Type confirmation is required for this launch" : "Human approval required"}
               right={(
                 <Gate
                   mode={{
                     kind: "modal",
-                    title: `Launch ${plan.publicId}?`,
+                    title: session.role === "client" ? `Submit ${plan.publicId}?` : `Launch ${plan.publicId}?`,
                     cooldownMs: 2000,
-                    requireTyped: highRisk ? "launch" : undefined,
+                    requireTyped: session.role === "client" ? undefined : highRisk ? "launch" : undefined,
                     summary: [
-                      `spawn ${agentCount || plan.allocation.team.length} agents and reviewers`,
+                      session.role === "client" ? "send structured brief to manager queue" : `spawn ${agentCount || plan.allocation.team.length} agents and reviewers`,
                       `estimated ${Math.max(12, Math.round(text.length * 3)).toLocaleString()} tokens`,
                       `wall time about ${plan.decision.estimated_time_days} days`,
                       "no production deploy",
@@ -267,7 +280,7 @@ export default function NewDemandRoute() {
                   {(open) => (
                     <Button variant="primary" disabled={submitting} onClick={open}>
                       {submitting ? <Loader2 className="animate-spin" /> : <Rocket />}
-                      Launch
+                      {session.role === "client" ? "Submit" : "Launch"}
                     </Button>
                   )}
                 </Gate>
@@ -381,6 +394,12 @@ function buildDemandText(
 
 function persistLocalPlan(plan: PlanShape, rawText: string) {
   window.localStorage.setItem(`forgeos.localDemand.${plan.publicId}`, JSON.stringify({ plan, rawText, savedAt: new Date().toISOString() }));
+}
+
+function rememberClientSubmission(publicId: string) {
+  const key = "forgeos.clientSubmissions";
+  const current = JSON.parse(window.localStorage.getItem(key) || "[]") as string[];
+  window.localStorage.setItem(key, JSON.stringify([publicId, ...current.filter((id) => id !== publicId)].slice(0, 10)));
 }
 
 function buildLocalPlan(

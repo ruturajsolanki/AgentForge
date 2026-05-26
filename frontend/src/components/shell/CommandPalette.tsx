@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FilePlus, Moon, Search, Settings, SplitSquareVertical, Sun, Workflow } from "lucide-react";
+import { FilePlus, Moon, Search, Settings, SplitSquareVertical, Sun, UsersRound, Workflow } from "lucide-react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "../ui/command";
 import { Dialog, DialogContent } from "../ui/dialog";
 import { forgeApi } from "../../services/forgeApi";
@@ -34,6 +34,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
             <CommandEmpty>No command found.</CommandEmpty>
             <CommandGroup heading="Go to">
               <CommandItem onSelect={() => run("/demands")}><Workflow /> Demands</CommandItem>
+              <CommandItem onSelect={() => run("/team")}><UsersRound /> Team</CommandItem>
               <CommandItem onSelect={() => run("/models")}><SplitSquareVertical /> Models</CommandItem>
               <CommandItem onSelect={() => run("/settings")}><Settings /> Settings</CommandItem>
             </CommandGroup>

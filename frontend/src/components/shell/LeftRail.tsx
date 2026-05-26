@@ -1,11 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
-import { PanelLeftClose, PanelLeftOpen, Settings, SplitSquareVertical, Workflow } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Settings, SplitSquareVertical, UsersRound, Workflow } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { Button } from "../ui/button";
 import { ThemeToggle } from "./ThemeToggle";
 
 const NAV = [
   { href: "/demands", label: "Demands", icon: Workflow },
+  { href: "/team", label: "Team", icon: UsersRound },
   { href: "/models", label: "Models", icon: SplitSquareVertical },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

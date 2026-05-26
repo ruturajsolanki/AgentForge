@@ -1,9 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
 import { Outlet, useNavigate, useParams } from "react-router-dom";
-import { Circle, Command as CommandIcon } from "lucide-react";
-import { Toaster } from "sonner";
+import { Circle, Command as CommandIcon, LogOut } from "lucide-react";
 import { useWebSocket } from "../../hooks/useWebSocket";
 import { useShortcut } from "../../hooks/useShortcut";
+import { useSession } from "../../hooks/useSession";
+import { logout } from "../../lib/auth";
 import type { WSEvent } from "../../types";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Button } from "../ui/button";
@@ -21,6 +22,7 @@ export function AppShell() {
   const [events, setEvents] = useState<WSEvent[]>([]);
   const navigate = useNavigate();
   const params = useParams();
+  const session = useSession();
 
   const handleEvent = useCallback((event: WSEvent) => {
     setEvents((prev) => {
@@ -65,8 +67,19 @@ export function AppShell() {
                   {connected ? "Live" : "Offline"}
                 </div>
                 <Avatar>
-                  <AvatarFallback>RS</AvatarFallback>
+                  <AvatarFallback>{session?.name.split(" ").map((part) => part[0]).join("").slice(0, 2) || "MO"}</AvatarFallback>
                 </Avatar>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    logout();
+                    navigate("/login", { replace: true });
+                  }}
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span className="hidden lg:inline">Sign out</span>
+                </Button>
               </div>
             </header>
             <main className="min-h-[calc(100vh-56px)]">
@@ -75,7 +88,6 @@ export function AppShell() {
           </div>
         </div>
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
-        <Toaster position="bottom-right" toastOptions={{ className: "border border-hairline-hi bg-surface-3 text-fg" }} />
       </div>
     </ShellContext.Provider>
   );

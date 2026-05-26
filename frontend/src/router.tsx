@@ -1,4 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
+import LoginRoute from "./routes/login";
+import ClientHomeRoute from "./routes/client";
 import RootRoute from "./routes/root";
 import DemandsRoute from "./routes/demands";
 import NewDemandRoute from "./routes/demand/new";
@@ -10,15 +12,19 @@ import DemandPreviewRoute from "./routes/demand/$id/preview";
 import DemandTerminalRoute from "./routes/demand/$id/terminal";
 import ModelsRoute from "./routes/models";
 import SettingsRoute from "./routes/settings";
+import TeamRoute from "./routes/team";
 
 export const router = createBrowserRouter([
-  { path: "/", element: <Navigate to="/demands" replace /> },
+  { path: "/", element: <Navigate to="/login" replace /> },
+  { path: "/login", element: <LoginRoute /> },
+  { path: "/client", element: <ClientHomeRoute /> },
   { path: "/demand/new", element: <NewDemandRoute /> },
   {
     path: "/",
     element: <RootRoute />,
     children: [
       { path: "demands", element: <DemandsRoute /> },
+      { path: "team", element: <TeamRoute /> },
       { path: "demand/:id", element: <DemandIndexRoute /> },
       { path: "demand/:id/plan", element: <DemandPlanRoute /> },
       { path: "demand/:id/agents", element: <DemandAgentsRoute /> },
