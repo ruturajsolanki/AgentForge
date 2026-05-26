@@ -1,6 +1,28 @@
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { DemandWorkspace } from "../../../components/demand/DemandWorkspace";
+import IDELayout from "../../../components/ide/IDELayout";
+import { useShell } from "../../../components/shell/ShellContext";
 
 export default function DemandFilesRoute() {
-  const { id } = useParams();
-  return <div className="p-4 sm:p-6"><h1 className="text-2xl font-semibold text-fg-strong">Files</h1><p className="mt-2 text-sm text-fg-muted">{id}</p></div>;
+  const { id = "" } = useParams();
+  const navigate = useNavigate();
+  const { wsRef } = useShell();
+
+  return (
+    <DemandWorkspace publicId={id} active="files">
+      {({ demand }) => (
+        <div className="h-[calc(100vh-236px)] min-h-[620px] overflow-hidden p-4 sm:p-6">
+          <div className="h-full overflow-hidden rounded-xl border border-hairline bg-surface-1">
+            <IDELayout
+              projectId={id}
+              projectPrompt={demand?.raw_text || id}
+              onBack={() => navigate(`/demand/${id}/plan`)}
+              onOpenSettings={() => navigate("/settings")}
+              wsRef={wsRef}
+            />
+          </div>
+        </div>
+      )}
+    </DemandWorkspace>
+  );
 }
