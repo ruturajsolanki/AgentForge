@@ -6,6 +6,7 @@ import { Button } from "../ui/button";
 import { Card, CardContent } from "../ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import type { AgentNodeData } from "./AgentNode";
+import { StreamView } from "./StreamView";
 
 export function AgentPane({
   agent,
@@ -77,15 +78,7 @@ export function AgentPane({
           </TabsList>
           {tab === "stream" && (
             <TabsContent className="min-h-0 flex-1 overflow-auto p-4">
-              <div className="min-h-48 rounded-xl border border-hairline bg-canvas p-4 font-mono text-xs leading-6 text-fg" aria-live="polite">
-                {agentEvents.filter((event) => event.type === "agent.code").length ? (
-                  agentEvents.filter((event) => event.type === "agent.code").map((event, index) => (
-                    <span key={`${event.seq ?? index}-${event.char_count ?? index}`}>{event.delta}</span>
-                  ))
-                ) : (
-                  <span className="text-fg-muted">Waiting for code stream...</span>
-                )}
-              </div>
+              <StreamView key={agent.id} agent={agent} events={agentEvents} />
             </TabsContent>
           )}
           {tab === "tools" && (

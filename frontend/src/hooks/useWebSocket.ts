@@ -136,5 +136,12 @@ export function useWebSocket(onEvent: (event: WSEvent) => void) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { connected, wsRef: ws };
+  const subscribeToDemand = useCallback((demandId: string) => {
+    const socket = ws.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return false;
+    socket.send(JSON.stringify({ type: "subscribe.demand", demand_id: demandId }));
+    return true;
+  }, []);
+
+  return { connected, wsRef: ws, subscribeToDemand };
 }

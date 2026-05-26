@@ -29,7 +29,7 @@ export function AppShell() {
     });
   }, []);
 
-  const { connected, wsRef } = useWebSocket(handleEvent);
+  const { connected, wsRef, subscribeToDemand } = useWebSocket(handleEvent);
 
   useShortcut("mod+k", () => setPaletteOpen(true));
   useShortcut("g d", () => navigate("/demands"));
@@ -43,7 +43,8 @@ export function AppShell() {
     events,
     clearEvents: () => setEvents([]),
     wsRef,
-  }), [connected, events, wsRef]);
+    subscribeToDemand,
+  }), [connected, events, subscribeToDemand, wsRef]);
 
   return (
     <ShellContext.Provider value={value}>

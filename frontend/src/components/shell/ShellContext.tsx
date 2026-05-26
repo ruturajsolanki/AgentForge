@@ -6,6 +6,7 @@ export interface ShellState {
   events: WSEvent[];
   clearEvents: () => void;
   wsRef: React.RefObject<WebSocket | null>;
+  subscribeToDemand: (demandId: string) => boolean;
 }
 
 export const ShellContext = createContext<ShellState | null>(null);

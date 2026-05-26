@@ -1,4 +1,5 @@
 import { useParams } from "react-router-dom";
+import { useEffect } from "react";
 import { RefreshCw } from "lucide-react";
 import { AgentCanvas } from "../../../components/canvas/AgentCanvas";
 import { DemandWorkspace } from "../../../components/demand/DemandWorkspace";
@@ -8,7 +9,10 @@ import { Card, CardContent } from "../../../components/ui/card";
 
 export default function DemandAgentsRoute() {
   const { id = "" } = useParams();
-  const { events } = useShell();
+  const { events, subscribeToDemand } = useShell();
+  useEffect(() => {
+    subscribeToDemand(id);
+  }, [id, subscribeToDemand]);
   return (
     <DemandWorkspace publicId={id} active="agents">
       {({ demand, plan, error, refresh }) => (
