@@ -1,25 +1,34 @@
 import { useParams } from "react-router-dom";
-import { Network } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+import { AgentCanvas } from "../../../components/canvas/AgentCanvas";
 import { DemandWorkspace } from "../../../components/demand/DemandWorkspace";
+import { useShell } from "../../../components/shell/ShellContext";
+import { Button } from "../../../components/ui/button";
 import { Card, CardContent } from "../../../components/ui/card";
 
 export default function DemandAgentsRoute() {
   const { id = "" } = useParams();
+  const { events } = useShell();
   return (
     <DemandWorkspace publicId={id} active="agents">
-      {() => (
+      {({ demand, plan, error, refresh }) => (
         <div className="p-4 sm:p-6">
-          <Card>
-            <CardContent className="grid min-h-[520px] place-items-center p-6 text-center">
-              <div>
-                <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl border border-hairline bg-surface-2 text-accent">
-                  <Network className="h-6 w-6" />
+          {plan ? (
+            <AgentCanvas publicId={id} plan={plan} events={events} stage={demand?.stage} />
+          ) : (
+            <Card>
+              <CardContent className="grid min-h-[520px] place-items-center p-6 text-center">
+                <div>
+                  <h2 className="text-xl font-semibold text-fg-strong">Agent canvas unavailable</h2>
+                  <p className="mt-2 max-w-md text-sm text-fg-muted">{error || "The fulfillment plan is not ready yet."}</p>
+                  <Button className="mt-4" onClick={refresh}>
+                    <RefreshCw className="h-4 w-4" />
+                    Retry
+                  </Button>
                 </div>
-                <h2 className="mt-4 text-xl font-semibold text-fg-strong">Agent canvas is materializing</h2>
-                <p className="mt-2 max-w-md text-sm text-fg-muted">The spatial canvas lands in the next milestone, wired to live WebSocket deltas.</p>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
     </DemandWorkspace>
