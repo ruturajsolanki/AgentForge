@@ -36,14 +36,14 @@ const EXT_ICONS: Record<string, string> = {
   ts: "text-blue-300",
   tsx: "text-blue-300",
   json: "text-green-400",
-  md: "text-slate-300",
+  md: "text-fg",
   py: "text-green-300",
   svg: "text-pink-400",
 };
 
 function extColor(name: string): string {
   const ext = name.split(".").pop()?.toLowerCase() || "";
-  return EXT_ICONS[ext] || "text-slate-400";
+  return EXT_ICONS[ext] || "text-fg-muted";
 }
 
 export default function FileTree({ tree, selectedPath, onSelect, onCreate, onDelete, onRename }: Props) {
@@ -97,20 +97,20 @@ export default function FileTree({ tree, selectedPath, onSelect, onCreate, onDel
   }, [renaming, renameName, onRename]);
 
   return (
-    <div className="h-full bg-[#252526] text-sm select-none overflow-auto" onClick={closeMenu}>
-      <div className="flex items-center justify-between px-3 py-2 border-b border-[#333] text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+    <div className="h-full bg-surface-1 text-sm select-none overflow-auto" onClick={closeMenu}>
+      <div className="flex items-center justify-between px-3 py-2 border-b border-hairline text-[11px] font-semibold text-fg-muted uppercase tracking-wider">
         <span>Explorer</span>
         <div className="flex gap-1">
           <button
             onClick={(e) => { e.stopPropagation(); startNew("", false); }}
-            className="p-0.5 hover:bg-[#3c3c3c] rounded"
+            className="p-0.5 hover:bg-surface-2 rounded"
             title="New File"
           >
             <FilePlus className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); startNew("", true); }}
-            className="p-0.5 hover:bg-[#3c3c3c] rounded"
+            className="p-0.5 hover:bg-surface-2 rounded"
             title="New Folder"
           >
             <FolderPlus className="w-3.5 h-3.5" />
@@ -204,8 +204,8 @@ function TreeNode({
   return (
     <div>
       <div
-        className={`flex items-center gap-1 px-1 py-[2px] cursor-pointer hover:bg-[#2a2d2e] ${
-          isSelected ? "bg-[#37373d]" : ""
+        className={`flex items-center gap-1 px-1 py-[2px] cursor-pointer hover:bg-surface-2 ${
+          isSelected ? "bg-surface-3" : ""
         }`}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onClick={() => {
@@ -217,9 +217,9 @@ function TreeNode({
         {isDir ? (
           <>
             {expanded ? (
-              <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+              <ChevronDown className="w-3.5 h-3.5 text-fg-muted shrink-0" />
             ) : (
-              <ChevronRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+              <ChevronRight className="w-3.5 h-3.5 text-fg-muted shrink-0" />
             )}
             {expanded ? (
               <FolderOpen className="w-4 h-4 text-yellow-400 shrink-0" />
@@ -243,11 +243,11 @@ function TreeNode({
               if (e.key === "Enter") onCommitRename();
               if (e.key === "Escape") onCommitRename();
             }}
-            className="flex-1 bg-[#3c3c3c] border border-violet-500 rounded px-1 text-xs text-slate-100 outline-none min-w-0"
+            className="flex-1 bg-surface-2 border border-accent rounded px-1 text-xs text-fg-strong outline-none min-w-0"
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
-          <span className="text-xs text-slate-300 truncate">{node.name}</span>
+          <span className="text-xs text-fg truncate">{node.name}</span>
         )}
       </div>
       {isDir && expanded && (
@@ -310,7 +310,7 @@ function NewInputRow({
       {isDir ? (
         <Folder className="w-4 h-4 text-yellow-400 shrink-0" />
       ) : (
-        <File className="w-4 h-4 text-slate-400 shrink-0" />
+        <File className="w-4 h-4 text-fg-muted shrink-0" />
       )}
       <input
         autoFocus
@@ -322,7 +322,7 @@ function NewInputRow({
           if (e.key === "Escape") onCancel();
         }}
         placeholder={isDir ? "folder name" : "file name"}
-        className="flex-1 bg-[#3c3c3c] border border-violet-500 rounded px-1 text-xs text-slate-100 outline-none placeholder-slate-600 min-w-0"
+        className="flex-1 bg-surface-2 border border-accent rounded px-1 text-xs text-fg-strong outline-none placeholder-fg-faint min-w-0"
       />
     </div>
   );
@@ -351,20 +351,20 @@ function ContextMenuPopup({
     <>
       <div className="fixed inset-0 z-[200]" onClick={onClose} />
       <div
-        className="fixed z-[201] bg-[#2d2d2d] border border-[#454545] rounded-md shadow-xl py-1 min-w-[160px] text-xs"
+        className="fixed z-[201] bg-surface-2 border border-hairline-hi rounded-md shadow-xl py-1 min-w-[160px] text-xs"
         style={{ left: x, top: y }}
       >
-        <button onClick={onNewFile} className="w-full text-left px-3 py-1.5 hover:bg-[#094771] text-slate-200 flex items-center gap-2">
+        <button onClick={onNewFile} className="w-full text-left px-3 py-1.5 hover:bg-surface-3 text-fg-strong flex items-center gap-2">
           <FilePlus className="w-3.5 h-3.5" /> New File
         </button>
-        <button onClick={onNewFolder} className="w-full text-left px-3 py-1.5 hover:bg-[#094771] text-slate-200 flex items-center gap-2">
+        <button onClick={onNewFolder} className="w-full text-left px-3 py-1.5 hover:bg-surface-3 text-fg-strong flex items-center gap-2">
           <FolderPlus className="w-3.5 h-3.5" /> New Folder
         </button>
-        <div className="border-t border-[#454545] my-1" />
-        <button onClick={onRename} className="w-full text-left px-3 py-1.5 hover:bg-[#094771] text-slate-200 flex items-center gap-2">
+        <div className="border-t border-hairline-hi my-1" />
+        <button onClick={onRename} className="w-full text-left px-3 py-1.5 hover:bg-surface-3 text-fg-strong flex items-center gap-2">
           <Pencil className="w-3.5 h-3.5" /> Rename
         </button>
-        <button onClick={onDelete} className="w-full text-left px-3 py-1.5 hover:bg-red-700/60 text-red-300 flex items-center gap-2">
+        <button onClick={onDelete} className="w-full text-left px-3 py-1.5 hover:bg-danger/20 text-danger flex items-center gap-2">
           <Trash2 className="w-3.5 h-3.5" /> Delete
         </button>
       </div>

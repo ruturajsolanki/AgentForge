@@ -128,7 +128,7 @@ export default function CodeEditor({
   const content = activeTab ? fileContents[activeTab] ?? "" : "";
 
   return (
-    <div className="flex flex-col h-full bg-[#1e1e1e]">
+    <div className="flex flex-col h-full bg-canvas">
       <EditorTabs
         tabs={tabs}
         activeTab={activeTab}
@@ -160,7 +160,7 @@ export default function CodeEditor({
           />
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center text-slate-500 text-sm">
+        <div className="flex-1 flex items-center justify-center text-fg-muted text-sm">
           Select a file to edit
         </div>
       )}

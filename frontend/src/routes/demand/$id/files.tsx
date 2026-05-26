@@ -19,6 +19,7 @@ export default function DemandFilesRoute() {
               onBack={() => navigate(`/demand/${id}/plan`)}
               onOpenSettings={() => navigate("/settings")}
               wsRef={wsRef}
+              embedded
             />
           </div>
         </div>

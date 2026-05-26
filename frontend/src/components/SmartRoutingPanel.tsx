@@ -34,7 +34,7 @@ const fallbackRows: RoutingRow[] = [
   { role: "planner", kind: "reasoning", priority: "quality", provider: "primary", model: "router-default" },
   { role: "builder", kind: "code", priority: "balanced", provider: "primary", model: "code-default" },
   { role: "reviewer", kind: "structured", priority: "quality", provider: "primary", model: "review-default" },
-  { role: "summarizer", kind: "prose", priority: "speed", provider: "speed", model: "fast-default" },
+  { role: "summarizer", kind: "writing", priority: "speed", provider: "speed", model: "fast-default" },
 ];
 
 export default function SmartRoutingPanel() {

@@ -39,7 +39,7 @@ const STARTERS = [
 ];
 const PLACEHOLDERS = [
   "Describe the business problem in plain language...",
-  "Example: I need a claims dashboard that flags risky cases and drafts manager summaries.",
+  "Example: I need a claims dashboard that flags high risk cases and drafts manager summaries.",
   "Tell ForgeOS what outcome you need, who uses it, and what constraints matter.",
 ];
 

@@ -25,9 +25,10 @@ interface Props {
   onBack: () => void;
   onOpenSettings: () => void;
   wsRef: React.RefObject<WebSocket | null>;
+  embedded?: boolean;
 }
 
-export default function IDELayout({ projectId, projectPrompt, onBack, onOpenSettings, wsRef }: Props) {
+export default function IDELayout({ projectId, projectPrompt, onBack, onOpenSettings, wsRef, embedded = false }: Props) {
   const [tree, setTree] = useState<FileNode[]>([]);
   const [tabs, setTabs] = useState<TabInfo[]>([]);
   const [activeTab, setActiveTab] = useState<string | null>(null);
@@ -334,44 +335,48 @@ export default function IDELayout({ projectId, projectPrompt, onBack, onOpenSett
   }, []);
 
   return (
-    <div className="flex flex-col h-screen bg-[#1e1e1e] text-slate-100">
+    <div className={`${embedded ? "h-full" : "h-screen"} flex flex-col bg-canvas text-fg-strong`}>
       {/* Toolbar */}
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-[#252526] border-b border-[#333] shrink-0">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-100 transition-colors px-2 py-1 rounded hover:bg-[#3c3c3c]"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          Home
-        </button>
-        <div className="h-4 w-px bg-[#444]" />
-        <span className="text-xs text-slate-400 truncate max-w-[300px]">
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-surface-1 border-b border-hairline shrink-0">
+        {!embedded && (
+          <>
+            <button
+              onClick={onBack}
+              className="flex items-center gap-1 text-xs text-fg-muted hover:text-fg-strong transition-colors px-2 py-1 rounded hover:bg-surface-2"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Home
+            </button>
+            <div className="h-4 w-px bg-hairline-hi" />
+          </>
+        )}
+        <span className="text-xs text-fg-muted truncate max-w-[300px]">
           {projectPrompt || projectId}
         </span>
         <div className="flex-1" />
         {/* Server controls */}
         <div className="flex items-center gap-1 mr-2">
           {serverLoading ? (
-            <span className="flex items-center gap-1 text-[11px] text-amber-400 px-2 py-1">
+            <span className="flex items-center gap-1 text-[11px] text-warn px-2 py-1">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
               <span className="hidden lg:inline">Starting...</span>
             </span>
           ) : serverRunning ? (
             <>
-              <span className="flex items-center gap-1 text-[10px] text-emerald-400 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="flex items-center gap-1 text-[10px] text-success px-1.5 py-0.5 rounded bg-surface-2 border border-success/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                 Live
               </span>
               <button
                 onClick={handleRestartServer}
-                className="p-1 rounded text-slate-400 hover:text-amber-300 hover:bg-[#3c3c3c] transition-colors"
+                className="p-1 rounded text-fg-muted hover:text-warn hover:bg-surface-2 transition-colors"
                 title="Restart dev server"
               >
                 <RotateCw className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={handleStopServer}
-                className="p-1 rounded text-slate-400 hover:text-red-400 hover:bg-[#3c3c3c] transition-colors"
+                className="p-1 rounded text-fg-muted hover:text-danger hover:bg-surface-2 transition-colors"
                 title="Stop dev server"
               >
                 <Square className="w-3.5 h-3.5" />
@@ -380,7 +385,7 @@ export default function IDELayout({ projectId, projectPrompt, onBack, onOpenSett
           ) : (
             <button
               onClick={handleStartServer}
-              className="flex items-center gap-1 text-[11px] px-2 py-1 rounded text-slate-400 hover:text-emerald-300 hover:bg-[#3c3c3c] transition-colors"
+              className="flex items-center gap-1 text-[11px] px-2 py-1 rounded text-fg-muted hover:text-success hover:bg-surface-2 transition-colors"
               title="Start dev server"
             >
               <Play className="w-3.5 h-3.5" />
@@ -388,20 +393,22 @@ export default function IDELayout({ projectId, projectPrompt, onBack, onOpenSett
             </button>
           )}
         </div>
-        <div className="h-4 w-px bg-[#444]" />
+        <div className="h-4 w-px bg-hairline-hi" />
         <ToggleBtn active={showTree} onClick={() => setShowTree(!showTree)} icon={showTree ? PanelLeftClose : PanelLeftOpen} label="Explorer" />
         <ToggleBtn active={showPreview} onClick={() => setShowPreview(!showPreview)} icon={Monitor} label="Preview" />
         <ToggleBtn active={showTerminal} onClick={() => setShowTerminal(!showTerminal)} icon={Terminal} label="Terminal" />
         <ToggleBtn active={showChat} onClick={() => setShowChat(!showChat)} icon={MessageSquare} label="Chat" />
-        <div className="h-4 w-px bg-[#444]" />
-        <button
-          onClick={onOpenSettings}
-          className="flex items-center gap-1 text-[11px] px-2 py-1 rounded text-slate-500 hover:text-slate-300 hover:bg-[#3c3c3c] transition-colors"
-          title="Settings"
-        >
-          <Settings className="w-3.5 h-3.5" />
-          <span className="hidden lg:inline">Settings</span>
-        </button>
+        <div className="h-4 w-px bg-hairline-hi" />
+        {!embedded && (
+          <button
+            onClick={onOpenSettings}
+            className="flex items-center gap-1 text-[11px] px-2 py-1 rounded text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors"
+            title="Settings"
+          >
+            <Settings className="w-3.5 h-3.5" />
+            <span className="hidden lg:inline">Settings</span>
+          </button>
+        )}
       </div>
 
       {/* Main area */}
@@ -420,7 +427,7 @@ export default function IDELayout({ projectId, projectPrompt, onBack, onOpenSett
               />
             </div>
             <div
-              className="w-[3px] cursor-col-resize bg-[#333] hover:bg-violet-500/50 transition-colors shrink-0"
+              className="w-[3px] cursor-col-resize bg-hairline hover:bg-accent/50 transition-colors shrink-0"
               onMouseDown={(e) => {
                 resizingRef.current = { target: "tree", startX: e.clientX, startW: treeWidth };
               }}
@@ -445,7 +452,7 @@ export default function IDELayout({ projectId, projectPrompt, onBack, onOpenSett
           </div>
           {showTerminal && (
             <>
-              <div className="h-[3px] bg-[#333] shrink-0" />
+              <div className="h-[3px] bg-hairline shrink-0" />
               <div className="h-[200px] shrink-0">
                 <IDETerminal projectId={projectId} wsRef={wsRef} />
               </div>
@@ -456,7 +463,7 @@ export default function IDELayout({ projectId, projectPrompt, onBack, onOpenSett
         {/* Preview */}
         {showPreview && (
           <>
-            <div className="w-[3px] bg-[#333] shrink-0" />
+            <div className="w-[3px] bg-hairline shrink-0" />
             <div className="w-[40%] min-w-[250px] max-w-[600px] shrink-0">
               <LivePreview
                 projectId={projectId}
@@ -474,7 +481,7 @@ export default function IDELayout({ projectId, projectPrompt, onBack, onOpenSett
         {showChat && (
           <>
             <div
-              className="w-[3px] cursor-col-resize bg-[#333] hover:bg-violet-500/50 transition-colors shrink-0"
+              className="w-[3px] cursor-col-resize bg-hairline hover:bg-accent/50 transition-colors shrink-0"
               onMouseDown={(e) => {
                 resizingRef.current = { target: "chat", startX: e.clientX, startW: chatWidth };
               }}
@@ -505,8 +512,8 @@ function ToggleBtn({
       onClick={onClick}
       className={`flex items-center gap-1 text-[11px] px-2 py-1 rounded transition-colors ${
         active
-          ? "bg-violet-600/20 text-violet-300 border border-violet-500/30"
-          : "text-slate-500 hover:text-slate-300 hover:bg-[#3c3c3c]"
+          ? "bg-accent-soft text-accent border border-accent/30"
+          : "text-fg-muted hover:text-fg hover:bg-surface-2"
       }`}
       title={label}
     >

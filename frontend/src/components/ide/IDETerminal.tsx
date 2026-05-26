@@ -94,9 +94,9 @@ export default function IDETerminal({ projectId, wsRef }: Props) {
   }, [input, running, projectId, wsRef]);
 
   return (
-    <div className="flex flex-col h-full bg-[#1a1a1a] font-mono text-xs">
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-[#333] bg-[#252526]">
-        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider font-sans">
+    <div className="flex flex-col h-full bg-canvas font-mono text-xs">
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-hairline bg-surface-1">
+        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-fg-muted uppercase tracking-wider font-sans">
           <TerminalIcon className="w-3.5 h-3.5" />
           Terminal
         </div>
@@ -104,7 +104,7 @@ export default function IDETerminal({ projectId, wsRef }: Props) {
           onClick={() => {
             setLines([{ id: idCounter.current++, text: "Terminal cleared.\n", type: "system" }]);
           }}
-          className="p-1 rounded hover:bg-[#3c3c3c] text-slate-500 hover:text-slate-300 transition-colors"
+          className="p-1 rounded hover:bg-surface-2 text-fg-muted hover:text-fg transition-colors"
           title="Clear"
         >
           <X className="w-3 h-3" />
@@ -123,10 +123,10 @@ export default function IDETerminal({ projectId, wsRef }: Props) {
               line.type === "input"
                 ? "text-green-400"
                 : line.type === "error"
-                  ? "text-red-400"
+                  ? "text-danger"
                   : line.type === "system"
-                    ? "text-slate-500"
-                    : "text-slate-300"
+                    ? "text-fg-muted"
+                    : "text-fg"
             }`}
           >
             {line.text}
@@ -134,7 +134,7 @@ export default function IDETerminal({ projectId, wsRef }: Props) {
         ))}
       </div>
 
-      <div className="flex items-center gap-1 px-2 py-1.5 border-t border-[#333]">
+      <div className="flex items-center gap-1 px-2 py-1.5 border-t border-hairline">
         <span className="text-green-400 shrink-0">$</span>
         <input
           ref={inputRef}
@@ -145,7 +145,7 @@ export default function IDETerminal({ projectId, wsRef }: Props) {
           }}
           disabled={running}
           placeholder={running ? "Running..." : "Enter command..."}
-          className="flex-1 bg-transparent text-slate-100 placeholder-slate-600 outline-none disabled:opacity-50"
+          className="flex-1 bg-transparent text-fg-strong placeholder-fg-faint outline-none disabled:opacity-50"
         />
       </div>
     </div>

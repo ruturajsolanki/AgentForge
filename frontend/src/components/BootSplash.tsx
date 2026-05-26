@@ -130,7 +130,7 @@ export default function BootSplash({ onDone }: Props) {
 
   return (
     <div
-      className={`fixed inset-0 z-[100] flex items-center justify-center bg-slate-950 transition-opacity duration-700 ${
+      className={`fixed inset-0 z-[100] flex items-center justify-center bg-canvas transition-opacity duration-700 ${
         fadeOut ? "opacity-0 pointer-events-none" : "opacity-100"
       }`}
       style={{
@@ -151,21 +151,21 @@ export default function BootSplash({ onDone }: Props) {
         {/* Logo / glow */}
         <div className="flex items-center gap-4 mb-10">
           <div className="relative">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-400 flex items-center justify-center font-bold text-slate-900 text-2xl">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent to-accent-hi flex items-center justify-center font-bold text-accent-fg text-2xl">
               F
             </div>
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-400 blur-xl opacity-40 animate-pulse"></div>
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-accent to-accent-hi blur-xl opacity-40 animate-pulse"></div>
           </div>
           <div>
-            <div className="text-xs font-semibold tracking-[0.3em] text-slate-400">
+            <div className="text-xs font-semibold tracking-[0.3em] text-fg-muted">
               FORGEOS
             </div>
             <div className="text-2xl font-bold text-white">
-              <span className="bg-gradient-to-r from-violet-400 via-cyan-300 to-emerald-300 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-accent via-accent-hi to-accent bg-clip-text text-transparent">
                 Booting up
               </span>
             </div>
-            <div className="text-xs text-slate-500 mt-1">
+            <div className="text-xs text-fg-muted mt-1">
               AgentForge × Vultron · 165-model smart router
             </div>
           </div>
@@ -180,43 +180,43 @@ export default function BootSplash({ onDone }: Props) {
                 key={stage.id}
                 className={`flex items-center gap-4 px-4 py-2.5 rounded-xl border transition-all ${
                   s === "active"
-                    ? "border-violet-500/50 bg-violet-500/5"
+                    ? "border-accent/30 bg-accent-soft"
                     : s === "ok"
-                    ? "border-emerald-500/30 bg-emerald-500/5"
+                    ? "border-success/30 bg-success/20"
                     : s === "fail"
-                    ? "border-rose-500/30 bg-rose-500/5"
-                    : "border-slate-800/60 bg-slate-900/40 opacity-50"
+                    ? "border-danger/30 bg-danger/20"
+                    : "border-hairline bg-surface-1 opacity-50"
                 }`}
               >
                 <div className="w-6 h-6 flex items-center justify-center">
                   {s === "pending" && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-slate-600"></div>
+                    <div className="w-1.5 h-1.5 rounded-full bg-fg-faint"></div>
                   )}
                   {s === "active" && (
-                    <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
+                    <Loader2 className="w-4 h-4 text-accent animate-spin" />
                   )}
                   {s === "ok" && (
-                    <Check className="w-4 h-4 text-emerald-400" />
+                    <Check className="w-4 h-4 text-success" />
                   )}
-                  {s === "fail" && <X className="w-4 h-4 text-rose-400" />}
+                  {s === "fail" && <X className="w-4 h-4 text-danger" />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-slate-200">
+                  <div className="text-sm font-medium text-fg-strong">
                     {stage.label}
                   </div>
-                  <div className="text-xs text-slate-500 truncate">
+                  <div className="text-xs text-fg-muted truncate">
                     {stage.detail}
                   </div>
                 </div>
                 <div
                   className={`text-[10px] font-mono uppercase tracking-wider ${
                     s === "ok"
-                      ? "text-emerald-400"
+                      ? "text-success"
                       : s === "fail"
-                      ? "text-rose-400"
+                      ? "text-danger"
                       : s === "active"
-                      ? "text-violet-300"
-                      : "text-slate-600"
+                      ? "text-accent"
+                      : "text-fg-faint"
                   }`}
                 >
                   {s === "pending" && "wait"}
@@ -229,8 +229,8 @@ export default function BootSplash({ onDone }: Props) {
           })}
         </div>
 
-        <div className="mt-8 text-center text-[11px] text-slate-600 font-mono">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>
+        <div className="mt-8 text-center text-[11px] text-fg-faint font-mono">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-success mr-1.5 animate-pulse"></span>
           tier-0 NIM · tier-1 Groq · tier-2 OpenRouter
         </div>
       </div>

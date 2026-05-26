@@ -16,31 +16,35 @@ interface Props {
 
 export default function ChatMessage({ role, content, fileEdits, timestamp, onApplyEdit }: Props) {
   const isUser = role === "user";
+  const edits = fileEdits || [];
+  const displayContent = !isUser && edits.length > 0
+    ? stripFileBlocks(content) || `Prepared ${edits.length} file edit${edits.length === 1 ? "" : "s"}.`
+    : content;
 
   return (
-    <div className={`flex gap-2.5 px-3 py-3 ${isUser ? "" : "bg-[#1a1a2e]/30"}`}>
+    <div className={`flex gap-2.5 px-3 py-3 ${isUser ? "" : "bg-surface-2"}`}>
       <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
-        isUser ? "bg-violet-600" : "bg-emerald-600"
+        isUser ? "bg-accent" : "bg-success"
       }`}>
         {isUser ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-semibold text-slate-300">
+          <span className="text-xs font-semibold text-fg">
             {isUser ? "You" : "AgentForge AI"}
           </span>
           {timestamp && (
-            <span className="text-[10px] text-slate-600">
+            <span className="text-[10px] text-fg-faint">
               {new Date(timestamp).toLocaleTimeString()}
             </span>
           )}
         </div>
-        <div className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap break-words">
-          <MessageContent content={content} />
+        <div className="text-sm text-fg leading-relaxed whitespace-pre-wrap break-words">
+          <MessageContent content={displayContent} />
         </div>
-        {fileEdits && fileEdits.length > 0 && (
+        {edits.length > 0 && (
           <div className="mt-2 space-y-2">
-            {fileEdits.map((edit, i) => (
+            {edits.map((edit, i) => (
               <FileEditBlock key={i} edit={edit} onApply={onApplyEdit} />
             ))}
           </div>
@@ -48,6 +52,13 @@ export default function ChatMessage({ role, content, fileEdits, timestamp, onApp
       </div>
     </div>
   );
+}
+
+function stripFileBlocks(content: string) {
+  return content
+    .replace(/FILE:\s*.+?\n```[\s\S]*?```/g, "")
+    .replace(/===FILE:\s*.+?===[\s\S]*?===END FILE===/g, "")
+    .trim();
 }
 
 function MessageContent({ content }: { content: string }) {
@@ -63,7 +74,7 @@ function MessageContent({ content }: { content: string }) {
         }
         if (part.startsWith("`") && part.endsWith("`")) {
           return (
-            <code key={i} className="px-1 py-0.5 bg-[#2d2d2d] rounded text-violet-300 text-xs">
+            <code key={i} className="px-1 py-0.5 bg-surface-2 rounded text-accent text-xs">
               {part.slice(1, -1)}
             </code>
           );
@@ -84,15 +95,15 @@ function InlineCodeBlock({ code, lang }: { code: string; lang: string }) {
   };
 
   return (
-    <div className="my-2 rounded-lg overflow-hidden border border-[#333]">
-      <div className="flex items-center justify-between px-3 py-1 bg-[#2d2d2d] text-[10px] text-slate-500">
+    <div className="my-2 rounded-lg overflow-hidden border border-hairline">
+      <div className="flex items-center justify-between px-3 py-1 bg-surface-2 text-[10px] text-fg-muted">
         <span>{lang || "code"}</span>
-        <button onClick={copy} className="flex items-center gap-1 hover:text-slate-300 transition-colors">
+        <button onClick={copy} className="flex items-center gap-1 hover:text-fg transition-colors">
           {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
-      <pre className="p-3 bg-[#1e1e1e] text-xs text-slate-300 overflow-x-auto">
+      <pre className="p-3 bg-canvas text-xs text-fg overflow-x-auto">
         <code>{code}</code>
       </pre>
     </div>
@@ -108,23 +119,23 @@ function FileEditBlock({ edit, onApply }: { edit: FileEdit; onApply?: (e: FileEd
   };
 
   return (
-    <div className="rounded-lg border border-emerald-700/40 overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-1.5 bg-emerald-900/30">
-        <span className="text-xs text-emerald-300 font-mono">{edit.path}</span>
+    <div className="rounded-lg border border-success/30 overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-success/20">
+        <span className="text-xs text-success font-mono">{edit.path}</span>
         <button
           onClick={handleApply}
           disabled={applied}
           className={`flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded transition-colors ${
             applied
-              ? "bg-emerald-700 text-emerald-100"
-              : "bg-emerald-600 hover:bg-emerald-500 text-white"
+              ? "bg-success text-success"
+              : "bg-success hover:bg-success text-white"
           }`}
         >
           {applied ? <Check className="w-3 h-3" /> : <Play className="w-3 h-3" />}
           {applied ? "Applied" : "Apply"}
         </button>
       </div>
-      <pre className="p-3 bg-[#1e1e1e] text-xs text-slate-300 overflow-x-auto max-h-[200px]">
+      <pre className="p-3 bg-canvas text-xs text-fg overflow-x-auto max-h-[200px]">
         <code>{edit.content.slice(0, 2000)}{edit.content.length > 2000 ? "\n..." : ""}</code>
       </pre>
     </div>
