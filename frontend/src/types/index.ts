@@ -98,15 +98,22 @@ export interface Decision {
 export interface AllocatedResource {
   resource_type: string;
   name: string;
+  title?: string | null;
+  seniority?: string | null;
   allocation_percentage: number;
   skills: string[];
   cost_per_day: number;
+  match_score?: number;
+  reason?: string | null;
 }
 
 export interface Allocation {
   team: AllocatedResource[];
   total_daily_cost: number;
   allocation_reasoning: string;
+  bench_size?: number;
+  coverage_score?: number;
+  uncovered_skills?: string[];
 }
 
 export interface SimilarProject {
