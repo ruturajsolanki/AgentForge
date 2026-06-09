@@ -16,9 +16,17 @@ const CLARIFY = {
 };
 
 test.describe("Client demand intake", () => {
-  test("client describes outcome then sees AI clarify chat with options", async ({ page }) => {
+  test("client describes outcome then selects an AI clarify option", async ({ page }) => {
     await loginAs(page, "client");
-    await mockApi(page, { "/api/demands/clarify": CLARIFY });
+    await mockApi(page, {
+      "/api/demands/clarify": CLARIFY,
+      "/api/demands/converse": {
+        message: "Great — we'll integrate the payment and email APIs.",
+        follow_up_questions: [],
+        ready_for_plan: true,
+        completeness_score: 0.8,
+      },
+    });
 
     await page.goto("/demand/new");
     await expect(page.locator("h1")).toContainText("What outcome do you need ForgeOS to deliver?");
@@ -31,11 +39,12 @@ test.describe("Client demand intake", () => {
     await expect(page.locator("h1")).toContainText("Let's refine your request");
     await expect(page.getByText("Does this need to integrate with existing systems?")).toBeVisible();
 
+    // Clicking an option submits it directly as the client's answer.
     const option = page.getByRole("button", { name: "Yes, 1-2 APIs (payment, email)" });
     await expect(option).toBeVisible();
     await option.click();
 
-    const input = page.getByPlaceholder("Pick an option above or type your own answer...");
-    await expect(input).toHaveValue(/Yes, 1-2 APIs/);
+    await expect(page.getByText("Yes, 1-2 APIs (payment, email)").last()).toBeVisible();
+    await expect(page.getByText("Great — we'll integrate the payment and email APIs.")).toBeVisible();
   });
 });

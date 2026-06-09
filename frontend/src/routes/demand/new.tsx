@@ -112,8 +112,8 @@ export default function NewDemandRoute() {
     }
   };
 
-  const sendChatMessage = async () => {
-    const msg = chatInput.trim();
+  const sendChatMessage = async (override?: string) => {
+    const msg = (override ?? chatInput).trim();
     if (!msg || sending) return;
     setSending(true);
     const userMsg = { role: "user" as const, content: msg };
@@ -348,9 +348,7 @@ export default function NewDemandRoute() {
                                   type="button"
                                   disabled={sending}
                                   className="rounded-full border border-accent/40 bg-accent/5 px-3 py-1.5 text-xs font-medium text-accent transition hover:border-accent hover:bg-accent hover:text-accent-fg disabled:opacity-50"
-                                  onClick={() => {
-                                    setChatInput((prev) => prev ? `${prev}; ${opt}` : opt);
-                                  }}
+                                  onClick={() => void sendChatMessage(opt)}
                                 >
                                   {opt}
                                 </button>
@@ -388,7 +386,7 @@ export default function NewDemandRoute() {
             <div className="mt-3 flex gap-2">
               <Textarea
                 className="min-h-[48px] max-h-[96px] flex-1 resize-none text-sm"
-                placeholder="Pick an option above or type your own answer..."
+                placeholder="Click an option above to answer, or type your own..."
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -589,8 +587,8 @@ function ClientDemandIntake({ initialText }: { initialText: string }) {
     }
   };
 
-  const sendChat = async () => {
-    const msg = chatInput.trim();
+  const sendChat = async (override?: string) => {
+    const msg = (override ?? chatInput).trim();
     if (!msg || sending) return;
     setSending(true);
     const userMsg = { role: "user" as const, content: msg };
@@ -768,7 +766,7 @@ function ClientDemandIntake({ initialText }: { initialText: string }) {
                                   type="button"
                                   disabled={sending}
                                   className="rounded-full border border-accent/40 bg-accent/5 px-3 py-1.5 text-xs font-medium text-accent transition hover:border-accent hover:bg-accent hover:text-accent-fg disabled:opacity-50"
-                                  onClick={() => setChatInput((prev) => prev ? `${prev}; ${opt}` : opt)}
+                                  onClick={() => void sendChat(opt)}
                                 >
                                   {opt}
                                 </button>
@@ -801,7 +799,7 @@ function ClientDemandIntake({ initialText }: { initialText: string }) {
             <div className="mt-3 flex gap-2">
               <Textarea
                 className="min-h-[48px] max-h-[96px] flex-1 resize-none text-sm"
-                placeholder="Pick an option above or type your own answer..."
+                placeholder="Click an option above to answer, or type your own..."
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => {

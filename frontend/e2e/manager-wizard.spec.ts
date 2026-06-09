@@ -16,9 +16,17 @@ const CLARIFY = {
 };
 
 test.describe("Manager demand wizard", () => {
-  test("step 1 -> clarify chat shows AI questions with clickable options", async ({ page }) => {
+  test("step 1 -> clarify chat shows AI questions with selectable options", async ({ page }) => {
     await loginAs(page, "manager");
-    await mockApi(page, { "/api/demands/clarify": CLARIFY });
+    await mockApi(page, {
+      "/api/demands/clarify": CLARIFY,
+      "/api/demands/converse": {
+        message: "Got it — admin and end users.",
+        follow_up_questions: [],
+        ready_for_plan: true,
+        completeness_score: 0.85,
+      },
+    });
 
     await page.goto("/demand/new");
     await expect(page.locator("h1")).toContainText("What should ForgeOS build?");
@@ -32,14 +40,14 @@ test.describe("Manager demand wizard", () => {
     await expect(page.locator("h1")).toContainText("Let's refine your demand");
     await expect(page.getByText("Who are the primary users of this system?")).toBeVisible();
 
-    // The AI offers clickable option chips (Cursor-plan-mode style).
+    // Clicking an option submits it directly as the answer (Cursor-plan-mode style).
     const option = page.getByRole("button", { name: "Admin + End Users (2 roles)" });
     await expect(option).toBeVisible();
     await option.click();
 
-    // Clicking an option populates the free-text answer box (still editable).
-    const input = page.getByPlaceholder("Pick an option above or type your own answer...");
-    await expect(input).toHaveValue(/Admin \+ End Users/);
+    // The chosen option is sent as the user's answer and the AI acknowledges.
+    await expect(page.getByText("Admin + End Users (2 roles)").last()).toBeVisible();
+    await expect(page.getByText("Got it — admin and end users.")).toBeVisible();
   });
 
   test("clarity progress bar is shown in the chat step", async ({ page }) => {
