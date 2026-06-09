@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, LockKeyhole, UserRound, UsersRound } from "lucide-react";
 import { toast } from "sonner";
-import { DEMO_USERS, login, loginAs, type UserRole } from "../lib/auth";
+import { DEMO_USERS, defaultDashboard, login, loginAs, type UserRole } from "../lib/auth";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -28,13 +28,13 @@ export default function LoginRoute() {
       return;
     }
     toast.success(`Signed in as ${session.role}`);
-    navigate(session.role === "client" ? "/client" : "/demands", { replace: true });
+    navigate(defaultDashboard(session), { replace: true });
   };
 
   const quickLogin = (next: UserRole) => {
     const session = loginAs(next);
     toast.success(`Signed in as ${session.role}`);
-    navigate(session.role === "client" ? "/client" : "/demands", { replace: true });
+    navigate(defaultDashboard(session), { replace: true });
   };
 
   return (

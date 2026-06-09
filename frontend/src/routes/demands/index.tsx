@@ -1,38 +1,83 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, Inbox, Plus, Search, Workflow } from "lucide-react";
 import { DemandCard } from "../../components/demand/DemandCard";
-import { STAGE_LABELS } from "../../components/demand/StageChip";
 import { useShell } from "../../components/shell/ShellContext";
+import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
+import { Card, CardContent } from "../../components/ui/card";
+import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
+import { cn } from "../../lib/cn";
 import { forgeApi } from "../../services/forgeApi";
 import type { Demand, DemandStage } from "../../types";
 import type { PlanShape } from "../../components/demand/PlanCard";
 import { Filters } from "./Filters";
 
-const STAGES: DemandStage[] = [
+const ACTION_STAGES = new Set<DemandStage>(["awaiting_approval", "failed"]);
+const ACTIVE_STAGES = new Set<DemandStage>([
   "ingested",
   "understanding",
   "deciding",
   "allocating",
-  "awaiting_approval",
   "executing",
   "monitoring",
   "explaining",
-  "completed",
-  "failed",
-];
+]);
+const DONE_STAGES = new Set<DemandStage>(["completed", "cancelled"]);
 
-function estimateTokens(demands: Demand[]) {
-  return demands.reduce((sum, demand) => sum + Math.max(120, Math.round(demand.raw_text.length / 4)), 0);
+function isActionNeeded(demand: Demand) {
+  return ACTION_STAGES.has(demand.stage);
 }
 
-function filterDemands(demands: Demand[], filter: string) {
-  if (filter === "High") return demands.filter((demand) => demand.understanding?.urgency === "high");
-  if (filter === "Active") return demands.filter((demand) => !["completed", "failed", "cancelled"].includes(demand.stage));
-  if (filter === "Completed") return demands.filter((demand) => demand.stage === "completed");
-  return demands;
+function isActive(demand: Demand) {
+  return ACTIVE_STAGES.has(demand.stage);
+}
+
+function isDone(demand: Demand) {
+  return DONE_STAGES.has(demand.stage);
+}
+
+function isHighPriority(demand: Demand) {
+  return demand.understanding?.urgency === "high";
+}
+
+function matchesSearch(demand: Demand, query: string) {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return [
+    demand.public_id,
+    demand.raw_text,
+    demand.stage,
+    demand.understanding?.domain,
+    demand.understanding?.problem_type,
+    demand.understanding?.urgency,
+    demand.decision?.project_type,
+    demand.decision?.execution_mode,
+  ].filter(Boolean).join(" ").toLowerCase().includes(q);
+}
+
+function filterDemands(demands: Demand[], filter: string, query: string) {
+  return demands
+    .filter((demand) => matchesSearch(demand, query))
+    .filter((demand) => {
+      if (filter === "Action needed") return isActionNeeded(demand);
+      if (filter === "Active") return isActive(demand) || demand.stage === "awaiting_approval";
+      if (filter === "High priority") return isHighPriority(demand);
+      if (filter === "Completed") return demand.stage === "completed";
+      if (filter === "Failed") return demand.stage === "failed";
+      return true;
+    })
+    .sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
+}
+
+function demandStats(demands: Demand[]) {
+  return {
+    action: demands.filter(isActionNeeded).length,
+    active: demands.filter((demand) => isActive(demand) || demand.stage === "awaiting_approval").length,
+    completed: demands.filter((demand) => demand.stage === "completed").length,
+    failed: demands.filter((demand) => demand.stage === "failed").length,
+  };
 }
 
 export default function DemandsRoute() {
@@ -40,6 +85,7 @@ export default function DemandsRoute() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("All");
+  const [query, setQuery] = useState("");
   const { events } = useShell();
 
   useEffect(() => {
@@ -64,86 +110,230 @@ export default function DemandsRoute() {
     )));
   }, [events]);
 
-  const visible = useMemo(() => filterDemands(demands, filter), [demands, filter]);
-  const columns = useMemo(() => {
-    const grouped = new Map<DemandStage, Demand[]>();
-    for (const stage of STAGES) grouped.set(stage, []);
-    for (const demand of visible) {
-      const list = grouped.get(demand.stage) || grouped.get("ingested")!;
-      list.push(demand);
-    }
-    return grouped;
-  }, [visible]);
+  const visible = useMemo(() => filterDemands(demands, filter, query), [demands, filter, query]);
+  const stats = useMemo(() => demandStats(demands), [demands]);
+  const grouped = useMemo(() => [
+    {
+      key: "action",
+      title: "Action needed",
+      description: "Approvals, failed runs, and items that need a manager decision.",
+      rows: visible.filter(isActionNeeded),
+      tone: "accent",
+    },
+    {
+      key: "active",
+      title: "In progress",
+      description: "Planning, execution, monitoring, and explanation work currently moving.",
+      rows: visible.filter((demand) => !isActionNeeded(demand) && isActive(demand)),
+      tone: "neutral",
+    },
+    {
+      key: "completed",
+      title: "Recently completed",
+      description: "Finished or closed demands kept for reference.",
+      rows: visible.filter(isDone),
+      tone: "success",
+    },
+  ], [visible]);
 
   return (
-    <div className="space-y-6 p-4 sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="space-y-5 p-4 sm:p-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.06em] text-fg-muted">Demands</p>
-          <h1 className="mt-2 text-2xl font-semibold text-fg-strong">Agentic operations board</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-5 text-fg-muted">Every AI demand is tracked by pipeline stage, live agent activity, and approval state.</p>
+          <h1 className="mt-2 text-2xl font-semibold text-fg-strong">Demand review</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-5 text-fg-muted">
+            Read client requests, see what needs action, and open the plan when a demand is ready to review.
+          </p>
         </div>
-        <Button asChild variant="primary"><Link to="/demand/new"><Plus /> New demand</Link></Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="secondary">
+            <Link to="/requests">
+              <Inbox className="h-4 w-4" />
+              Client requests
+            </Link>
+          </Button>
+          <Button asChild variant="primary">
+            <Link to="/demand/new">
+              <Plus className="h-4 w-4" />
+              New demand
+            </Link>
+          </Button>
+        </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Filters active={filter} onChange={setFilter} />
-        <div className="text-sm text-fg-muted"><span className="font-mono text-fg">{visible.length}</span> demands · <span className="font-mono text-fg">{estimateTokens(visible).toLocaleString()}</span> est. tokens</div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard icon={AlertTriangle} label="Action needed" value={stats.action} tone="accent" />
+        <StatCard icon={Workflow} label="Active work" value={stats.active} tone="neutral" />
+        <StatCard icon={CheckCircle2} label="Completed" value={stats.completed} tone="success" />
+        <StatCard icon={Clock3} label="Failed" value={stats.failed} tone="danger" />
       </div>
+
+      <Card>
+        <CardContent className="flex flex-wrap items-center gap-3 p-3">
+          <div className="relative min-w-64 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-fg-muted" />
+            <Input
+              className="pl-9"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search demand, ID, domain, priority, stage"
+            />
+          </div>
+          <Filters active={filter} onChange={setFilter} />
+          <select
+            className="rounded-md border bg-background px-2 py-1.5 text-sm"
+            onChange={(e) => {
+              const val = e.target.value;
+              setDemands((prev) => [...prev].sort((a, b) => {
+                if (val === "newest") return String(b.created_at || "").localeCompare(String(a.created_at || ""));
+                if (val === "oldest") return String(a.created_at || "").localeCompare(String(b.created_at || ""));
+                if (val === "stage") return (a.stage || "").localeCompare(b.stage || "");
+                return 0;
+              }));
+            }}
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="stage">By stage</option>
+          </select>
+          <div className="text-sm text-fg-muted">
+            <span className="font-mono text-fg">{visible.length}</span> shown
+          </div>
+        </CardContent>
+      </Card>
 
       {error && (
         <div role="alert" className="rounded-xl border border-danger/30 bg-danger/10 p-4 text-sm text-danger">{error}</div>
       )}
 
       {loading ? (
-        <div className="grid gap-3 overflow-x-auto pb-3 xl:grid-cols-5">
-          {STAGES.slice(0, 5).map((stage) => (
-            <div key={stage} className="min-w-72 rounded-xl border border-hairline bg-surface-1 p-3">
-              <Skeleton className="h-4 w-28" />
-              <div className="mt-4 space-y-3">
-                {Array.from({ length: 5 }).map((_, index) => <Skeleton key={index} className="h-32" />)}
-              </div>
-            </div>
+        <LoadingRows />
+      ) : visible.length === 0 ? (
+        <EmptyDemands query={query} filter={filter} />
+      ) : (
+        <div className="space-y-5">
+          {grouped.map((group) => (
+            group.rows.length ? (
+              <DemandSection
+                key={group.key}
+                title={group.title}
+                description={group.description}
+                count={group.rows.length}
+                tone={group.tone}
+                rows={group.rows}
+              />
+            ) : null
           ))}
         </div>
-      ) : visible.length === 0 ? (
-        <div className="grid min-h-[420px] place-items-center rounded-xl border border-dashed border-hairline bg-surface-1 p-8 text-center">
-          <div>
-            <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl border border-hairline bg-surface-2">
-              <span className="font-mono text-2xl text-accent">F</span>
-            </div>
-            <h2 className="mt-5 text-xl font-semibold text-fg-strong">The forge is cold</h2>
-            <p className="mt-2 text-sm text-fg-muted">Start a demand to see it ship.</p>
-            <div className="mt-5 flex flex-wrap justify-center gap-2">
-              {["Build a sales dashboard", "Automate claims intake", "Create a portfolio"].map((seed) => (
-                <Button key={seed} asChild variant="secondary" size="sm">
-                  <Link to={`/demand/new?seed=${encodeURIComponent(seed)}`}>{seed}</Link>
-                </Button>
-              ))}
-            </div>
+      )}
+    </div>
+  );
+}
+
+function DemandSection({
+  title,
+  description,
+  count,
+  tone,
+  rows,
+}: {
+  title: string;
+  description: string;
+  count: number;
+  tone: string;
+  rows: Demand[];
+}) {
+  return (
+    <section className="rounded-xl border border-hairline bg-surface-1 p-3 sm:p-4">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-fg-strong">{title}</h2>
+          <p className="mt-1 text-sm text-fg-muted">{description}</p>
+        </div>
+        <Badge className={cn(
+          tone === "accent" && "border-accent/30 text-accent",
+          tone === "success" && "border-success/30 text-success",
+        )}>
+          {count} demands
+        </Badge>
+      </div>
+      <div className="space-y-3">
+        {rows.map((demand) => <DemandCard key={demand.id} demand={demand} />)}
+      </div>
+    </section>
+  );
+}
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: typeof AlertTriangle;
+  label: string;
+  value: number;
+  tone: "accent" | "neutral" | "success" | "danger";
+}) {
+  return (
+    <div className="rounded-xl border border-hairline bg-surface-1 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-xs text-fg-muted">{label}</div>
+        <Icon className={cn(
+          "h-4 w-4",
+          tone === "accent" && "text-accent",
+          tone === "success" && "text-success",
+          tone === "danger" && "text-danger",
+          tone === "neutral" && "text-fg-muted",
+        )} />
+      </div>
+      <div className="mt-3 font-mono text-3xl font-semibold text-fg-strong">{value}</div>
+    </div>
+  );
+}
+
+function LoadingRows() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div key={index} className="rounded-xl border border-hairline bg-surface-1 p-4">
+          <div className="flex flex-wrap gap-2">
+            <Skeleton className="h-5 w-28" />
+            <Skeleton className="h-5 w-20" />
+            <Skeleton className="h-5 w-24" />
+          </div>
+          <Skeleton className="mt-4 h-5 w-full" />
+          <Skeleton className="mt-2 h-5 w-4/5" />
+          <div className="mt-4 flex gap-2">
+            <Skeleton className="h-7 w-28" />
+            <Skeleton className="h-7 w-28" />
           </div>
         </div>
-      ) : (
-        <div className="grid gap-3 overflow-x-auto pb-3 xl:grid-cols-5">
-          {STAGES.map((stage) => {
-            const rows = columns.get(stage) || [];
-            return (
-              <section key={stage} className="min-w-72 rounded-xl border border-hairline bg-surface-1 p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-[11px] font-medium uppercase tracking-[0.06em] text-fg-muted">{STAGE_LABELS[stage]}</div>
-                    <div className="mt-1 text-xs text-fg-faint">{estimateTokens(rows).toLocaleString()} tokens</div>
-                  </div>
-                  <span className="grid h-7 min-w-7 place-items-center rounded-full border border-hairline bg-surface-2 px-2 text-xs font-medium text-fg">{rows.length}</span>
-                </div>
-                <div className="mt-3 space-y-3">
-                  {rows.map((demand) => <DemandCard key={demand.id} demand={demand} />)}
-                </div>
-              </section>
-            );
-          })}
+      ))}
+    </div>
+  );
+}
+
+function EmptyDemands({ query, filter }: { query: string; filter: string }) {
+  const filtered = Boolean(query.trim()) || filter !== "All";
+  return (
+    <div className="grid min-h-[420px] place-items-center rounded-xl border border-dashed border-hairline bg-surface-1 p-8 text-center">
+      <div>
+        <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl border border-hairline bg-surface-2">
+          <Inbox className="h-7 w-7 text-accent" />
         </div>
-      )}
+        <h2 className="mt-5 text-xl font-semibold text-fg-strong">
+          {filtered ? "No matching demands" : "No demands need review yet"}
+        </h2>
+        <p className="mt-2 text-sm text-fg-muted">
+          {filtered ? "Try a different search or clear the active filter." : "New client and manager demands will appear here."}
+        </p>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <Button asChild variant="primary"><Link to="/demand/new">New demand</Link></Button>
+          <Button asChild variant="secondary"><Link to="/requests">Client requests</Link></Button>
+        </div>
+      </div>
     </div>
   );
 }

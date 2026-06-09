@@ -34,7 +34,7 @@ export default function ClientHomeRoute() {
             <div className="mb-5 rounded-xl border border-success/30 bg-surface-1 p-4 text-sm text-fg">
               <div className="flex items-center gap-2 font-medium text-fg-strong">
                 <CheckCircle2 className="h-4 w-4 text-success" />
-                Demand {submitted} submitted for manager review.
+                Request {submitted} submitted for manager review.
               </div>
             </div>
           )}
@@ -56,8 +56,8 @@ export default function ClientHomeRoute() {
         <aside className="grid gap-3">
           {[
             ["1", "Describe", "Plain-language requirement and industry context."],
-            ["2", "AI plan", "Structured brief, route, owner, cost, and team suggestion."],
-            ["3", "Manager review", "Manager edits team, approves, and sends agents to execution."],
+            ["2", "AI classification", "ForgeOS structures the request for delivery review."],
+            ["3", "Manager review", "The manager approves scope and sends it to execution."],
           ].map(([num, title, body]) => (
             <Card key={num}>
               <CardContent className="flex gap-3 p-4">

@@ -84,6 +84,36 @@ Tabs             underline-style, accent bar 2px below active tab
 ## Iconography
 lucide-react only. Stroke 1.5. Icon size matches text line-height — 14 / 16 / 18.
 
+## Delivery Layer Components
+
+### SwonBadge
+Pill with lifecycle dot + SWON-XXXXX monospace ID. States map to:
+- Initiated: blue-100    Planning: purple-100
+- Executing: amber-100   Monitoring: cyan-100
+- Closing: orange-100    Warranty: green-100    Closed: gray-100
+
+### WonBadge
+Same pill style. Billable indicator shows `$` in emerald. States:
+Active: green  Extended: blue  Released: gray  Renewed: amber
+
+### TaskCard
+Surface-1 card. Header: public_id mono + status badge. Body: priority dot, hours fraction, SLA date (red if overdue), blocked_reason truncated. Click → drawer.
+
+### TaskBoard
+5-col kanban (Todo / InProgress / Review / Blocked / Done). Muted header with count pill. Cards are TaskCard.
+
+### HandoffDialog
+Modal gate using Dialog. Select for target member, textarea for reason. Two CTAs: Cancel (outline) + Confirm Handoff (primary).
+
+### ActivityTimeline
+Vertical timeline with colored dots per action type (green=created, blue=updated, emerald=approved, amber=state_changed, purple=handoff, red=deleted). Expandable diff viewer. Timestamps right-aligned.
+
+### CapacityHeatmap
+Table with member names (sticky left) and day columns. Cells colored by intensity: 0h=gray-100, 1-2h=green-200, 3-4h=green-400, 5-6h=amber-300, 7-8h=orange-400, 8h+=red-500.
+
+### Role Dashboard Colors
+Each role dashboard uses the same surface/accent tokens. No role-specific colors — differentiation is through content and layout, not theme.
+
 ## Forbidden
 - second chromatic accent
 - emoji in product chrome (allowed inside agent-generated content)

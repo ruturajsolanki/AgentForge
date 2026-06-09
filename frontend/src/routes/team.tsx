@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import { CheckCircle2, Plus, Save, Search, Trash2, UserRoundPlus, UsersRound } from "lucide-react";
+import { CheckCircle2, Loader2, Plus, RefreshCw, Save, Search, UserRoundPlus, UsersRound } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -10,7 +10,7 @@ import { Input } from "../components/ui/input";
 import { Progress } from "../components/ui/progress";
 import { Separator } from "../components/ui/separator";
 import { forgeApi } from "../services/forgeApi";
-import type { AllocatedResource, Demand } from "../types";
+import type { AllocatedResource, Demand, PortalTeamMember } from "../types";
 
 interface TeamMember {
   id: string;
@@ -22,15 +22,6 @@ interface TeamMember {
   skills: string[];
   assignment: string;
 }
-
-const KEY = "forgeos.managerTeam";
-
-const initialTeam: TeamMember[] = [
-  { id: "tm-1", name: "Sam Rivera", role: "React Frontend Engineer", experience: "7 yrs", aiReadiness: "advanced", availability: "55%", skills: ["react", "typescript", "ux"], assignment: "Available" },
-  { id: "tm-2", name: "Daniel Kim", role: "Analytics Engineer", experience: "8 yrs", aiReadiness: "active", availability: "40%", skills: ["analytics", "sql", "visualization"], assignment: "Retail loyalty dashboard" },
-  { id: "tm-3", name: "Maya Iyer", role: "Product Strategist", experience: "9 yrs", aiReadiness: "learning", availability: "65%", skills: ["requirements", "ux", "stakeholders"], assignment: "Available" },
-  { id: "tm-4", name: "Forge-FE", role: "AI Frontend Agent", experience: "AI agent", aiReadiness: "advanced", availability: "100%", skills: ["react", "typescript", "responsive_ui"], assignment: "Suggested pool" },
-];
 
 const emptyDraft: Omit<TeamMember, "id"> = {
   name: "",
@@ -45,22 +36,37 @@ const emptyDraft: Omit<TeamMember, "id"> = {
 const readinessFilters = ["all", "advanced", "active", "learning"] as const;
 
 export default function TeamRoute() {
-  const [team, setTeam] = useState<TeamMember[]>(() => readTeam());
+  const [team, setTeam] = useState<TeamMember[]>([]);
   const [draft, setDraft] = useState(emptyDraft);
   const [demands, setDemands] = useState<Demand[]>([]);
-  const [selectedId, setSelectedId] = useState(() => readTeam()[0]?.id || "");
+  const [selectedId, setSelectedId] = useState("");
   const [query, setQuery] = useState("");
   const [readiness, setReadiness] = useState<(typeof readinessFilters)[number]>("all");
   const [addOpen, setAddOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+
+  const loadTeam = async () => {
+    setLoading(true);
+    try {
+      const rows = await forgeApi.portalListTeam();
+      const mapped = rows.map(fromApiTeamMember);
+      setTeam(mapped);
+      setSelectedId((current) => current && mapped.some((member) => member.id === current) ? current : mapped[0]?.id || "");
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load team roster");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
+    void loadTeam();
     forgeApi.listDemands().then(setDemands).catch(() => setDemands([]));
   }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem(KEY, JSON.stringify(team));
-    if (team.length && !team.some((member) => member.id === selectedId)) setSelectedId(team[0].id);
-  }, [selectedId, team]);
 
   const suggested = useMemo(() => {
     const latest = demands.find((demand) => demand.allocation?.team?.length);
@@ -88,54 +94,101 @@ export default function TeamRoute() {
 
   const selected = filteredTeam.find((member) => member.id === selectedId) || filteredTeam[0] || null;
 
-  const addMember = () => {
+  const addMember = async () => {
     if (!draft.name.trim() || !draft.role.trim()) {
       toast.error("Add a name and role");
       return;
     }
-    const member = { ...draft, id: `tm-${Date.now()}`, skills: normalizeSkills(draft.skills.join(",")) };
-    setTeam((current) => [member, ...current]);
-    setSelectedId(member.id);
-    setQuery("");
-    setReadiness("all");
-    setDraft(emptyDraft);
-    setAddOpen(false);
-    toast.success("Team member added");
+    setCreating(true);
+    try {
+      const saved = await forgeApi.portalCreateTeamMember(toApiTeamMember(draft));
+      const member = fromApiTeamMember(saved);
+      setTeam((current) => [member, ...current]);
+      setSelectedId(member.id);
+      setQuery("");
+      setReadiness("all");
+      setDraft(emptyDraft);
+      setAddOpen(false);
+      toast.success("Team member added");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not add team member");
+    } finally {
+      setCreating(false);
+    }
   };
 
-  const addSuggested = (resource: AllocatedResource) => {
-    const member: TeamMember = {
-      id: `tm-${Date.now()}-${resource.name}`,
+  const saveMember = async (member: TeamMember | null) => {
+    if (!member) return;
+    setSavingId(member.id);
+    try {
+      const saved = await forgeApi.portalUpdateTeamMember(member.id, toApiTeamMember(member));
+      const next = fromApiTeamMember(saved);
+      setTeam((current) => current.map((item) => item.id === next.id ? next : item));
+      toast.success("Team member saved");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save team member");
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const addSuggested = async (resource: AllocatedResource) => {
+    const existing = team.find((member) => member.name.toLowerCase() === resource.name.toLowerCase());
+    if (existing) {
+      setSelectedId(existing.id);
+      toast("Resource already exists in the team roster");
+      return;
+    }
+    const member: Omit<TeamMember, "id"> = {
       name: resource.name,
-      role: resource.title || resource.resource_type.replace(/_/g, " "),
+      role: resource.title || formatLabel(resource.resource_type),
       experience: resource.seniority === "agent" ? "AI agent" : "Not set",
       aiReadiness: resource.seniority === "agent" ? "advanced" : "active",
       availability: `${Math.round(resource.allocation_percentage * 100)}%`,
       skills: resource.skills,
       assignment: "Suggested pool",
     };
-    setTeam((current) => [member, ...current]);
-    setSelectedId(member.id);
-    setQuery("");
-    setReadiness("all");
-    toast.success(`${resource.name} added to team`);
+    setCreating(true);
+    try {
+      const saved = await forgeApi.portalCreateTeamMember(toApiTeamMember(member));
+      const next = fromApiTeamMember(saved);
+      setTeam((current) => [next, ...current]);
+      setSelectedId(next.id);
+      setQuery("");
+      setReadiness("all");
+      toast.success(`${resource.name} added to team`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not add suggested resource");
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.06em] text-fg-muted">Manager</p>
+          <p className="text-xs font-medium uppercase text-fg-muted">Manager</p>
           <h1 className="mt-2 text-2xl font-semibold text-fg-strong">Team management</h1>
           <p className="mt-2 max-w-2xl text-sm leading-5 text-fg-muted">
             Maintain capacity, AI readiness, skills, and assignments before approving demand execution.
           </p>
         </div>
-        <Button variant="primary" onClick={() => setAddOpen(true)}>
-          <Plus className="h-4 w-4" />
-          Add member
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => void loadTeam()} disabled={loading}>
+            {loading ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+            Refresh
+          </Button>
+          <Button variant="primary" onClick={() => setAddOpen(true)}>
+            <Plus />
+            Add member
+          </Button>
+        </div>
       </div>
+
+      {error && (
+        <div role="alert" className="rounded-lg border border-danger/30 bg-danger/10 p-4 text-sm text-danger">{error}</div>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label="Resources" value={team.length} helper={`${stats.agents} AI agents`} />
@@ -157,50 +210,54 @@ export default function TeamRoute() {
               </Button>
             ))}
           </div>
-          <Button variant="secondary" onClick={() => toast.success("Team saved locally")}>
-            <Save className="h-4 w-4" />
-            Save
+          <Button variant="secondary" disabled={!selected || savingId === selected.id} onClick={() => void saveMember(selected)}>
+            {selected && savingId === selected.id ? <Loader2 className="animate-spin" /> : <Save />}
+            Save selected
           </Button>
         </CardContent>
       </Card>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <Card className="min-w-0">
-          <CardHeader className="flex flex-row items-center justify-between gap-3">
-            <div>
-              <CardTitle>Resource roster</CardTitle>
-              <p className="mt-1 text-sm text-fg-muted">{filteredTeam.length} shown from {team.length} total</p>
-            </div>
-            <UsersRound className="h-5 w-5 text-accent" />
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {filteredTeam.length ? filteredTeam.map((member) => (
-              <RosterRow
-                key={member.id}
-                member={member}
-                selected={selected?.id === member.id}
-                onSelect={() => setSelectedId(member.id)}
-              />
-            )) : (
-              <div className="grid min-h-48 place-items-center rounded-xl border border-dashed border-hairline bg-surface-2 p-6 text-center">
-                <div>
-                  <div className="text-sm font-semibold text-fg-strong">No matching resources</div>
-                  <p className="mt-1 text-sm text-fg-muted">Clear search or switch readiness filter.</p>
-                </div>
+      {loading ? (
+        <div className="grid min-h-[420px] place-items-center rounded-lg border border-hairline bg-surface-1">
+          <Loader2 className="h-6 w-6 animate-spin text-accent" />
+        </div>
+      ) : (
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <Card className="min-w-0">
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
+              <div>
+                <CardTitle>Resource roster</CardTitle>
+                <p className="mt-1 text-sm text-fg-muted">{filteredTeam.length} shown from {team.length} total</p>
               </div>
-            )}
-          </CardContent>
-        </Card>
+              <UsersRound className="h-5 w-5 text-accent" />
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {filteredTeam.length ? filteredTeam.map((member) => (
+                <RosterRow
+                  key={member.id}
+                  member={member}
+                  selected={selected?.id === member.id}
+                  onSelect={() => setSelectedId(member.id)}
+                />
+              )) : (
+                <div className="grid min-h-48 place-items-center rounded-lg border border-dashed border-hairline bg-surface-2 p-6 text-center">
+                  <div>
+                    <div className="text-sm font-semibold text-fg-strong">No matching resources</div>
+                    <p className="mt-1 text-sm text-fg-muted">Clear search or switch readiness filter.</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-        <MemberDetail
-          member={selected}
-          setTeam={setTeam}
-          onDelete={(id) => {
-            setTeam((current) => current.filter((member) => member.id !== id));
-            toast.success("Team member removed");
-          }}
-        />
-      </div>
+          <MemberDetail
+            member={selected}
+            saving={Boolean(selected && savingId === selected.id)}
+            setTeam={setTeam}
+            onSave={() => void saveMember(selected)}
+          />
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -216,11 +273,16 @@ export default function TeamRoute() {
           {suggested.length ? (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {suggested.slice(0, 9).map((resource) => (
-                <SuggestedResource key={`${resource.name}-${resource.resource_type}`} resource={resource} onAdd={() => addSuggested(resource)} />
+                <SuggestedResource
+                  key={`${resource.name}-${resource.resource_type}`}
+                  resource={resource}
+                  disabled={creating}
+                  onAdd={() => void addSuggested(resource)}
+                />
               ))}
             </div>
           ) : (
-            <div className="rounded-xl border border-dashed border-hairline bg-surface-2 p-6 text-sm text-fg-muted">
+            <div className="rounded-lg border border-dashed border-hairline bg-surface-2 p-6 text-sm text-fg-muted">
               Create or load a demand to see AI-suggested resources here.
             </div>
           )}
@@ -247,11 +309,15 @@ export default function TeamRoute() {
                 <option value="learning">learning</option>
               </select>
             </label>
+            <Editable label="Assignment" value={draft.assignment} onChange={(value) => setDraft((current) => ({ ...current, assignment: value }))} />
             <Editable label="Skills" value={draft.skills.join(", ")} onChange={(value) => setDraft((current) => ({ ...current, skills: normalizeSkills(value) }))} />
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setAddOpen(false)}>Cancel</Button>
-            <Button variant="primary" onClick={addMember}>Add member</Button>
+            <Button variant="primary" disabled={creating} onClick={() => void addMember()}>
+              {creating ? <Loader2 className="animate-spin" /> : <Plus />}
+              Add member
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -277,7 +343,7 @@ function RosterRow({ member, selected, onSelect }: { member: TeamMember; selecte
     <button
       type="button"
       onClick={onSelect}
-      className={selected ? "w-full rounded-xl border border-accent bg-accent-soft p-4 text-left transition" : "w-full rounded-xl border border-hairline bg-surface-2 p-4 text-left transition hover:border-hairline-hi hover:bg-surface-3"}
+      className={selected ? "w-full rounded-lg border border-accent bg-accent-soft p-4 text-left transition" : "w-full rounded-lg border border-hairline bg-surface-2 p-4 text-left transition hover:border-hairline-hi hover:bg-surface-3"}
     >
       <div className="grid gap-4 lg:grid-cols-[minmax(220px,1.4fr)_minmax(180px,1fr)_140px] lg:items-center">
         <div className="flex min-w-0 items-center gap-3">
@@ -290,7 +356,7 @@ function RosterRow({ member, selected, onSelect }: { member: TeamMember; selecte
         <div className="min-w-0">
           <div className="truncate text-xs text-fg-muted">{member.assignment}</div>
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {member.skills.slice(0, 3).map((skill) => <Badge key={skill}>{skill}</Badge>)}
+            {member.skills.slice(0, 3).map((skill) => <Badge key={skill}>{formatLabel(skill)}</Badge>)}
             {member.skills.length > 3 && <Badge>+{member.skills.length - 3}</Badge>}
           </div>
         </div>
@@ -308,12 +374,14 @@ function RosterRow({ member, selected, onSelect }: { member: TeamMember; selecte
 
 function MemberDetail({
   member,
+  saving,
   setTeam,
-  onDelete,
+  onSave,
 }: {
   member: TeamMember | null;
+  saving: boolean;
   setTeam: Dispatch<SetStateAction<TeamMember[]>>;
-  onDelete: (id: string) => void;
+  onSave: () => void;
 }) {
   if (!member) {
     return (
@@ -339,8 +407,9 @@ function MemberDetail({
               <p className="mt-1 truncate text-sm text-fg-muted">{member.role}</p>
             </div>
           </div>
-          <Button size="icon" variant="ghost" aria-label={`Remove ${member.name}`} onClick={() => onDelete(member.id)}>
-            <Trash2 className="h-4 w-4 text-danger" />
+          <Button size="sm" variant="primary" disabled={saving} onClick={onSave}>
+            {saving ? <Loader2 className="animate-spin" /> : <Save />}
+            Save
           </Button>
         </div>
       </CardHeader>
@@ -367,10 +436,10 @@ function MemberDetail({
         <div>
           <div className="mb-2 text-xs text-fg-muted">Skill coverage</div>
           <div className="flex flex-wrap gap-2">
-            {member.skills.length ? member.skills.map((skill) => <Badge key={skill}>{skill}</Badge>) : <span className="text-sm text-fg-muted">No skills set.</span>}
+            {member.skills.length ? member.skills.map((skill) => <Badge key={skill}>{formatLabel(skill)}</Badge>) : <span className="text-sm text-fg-muted">No skills set.</span>}
           </div>
         </div>
-        <div className="rounded-xl border border-hairline bg-surface-2 p-3">
+        <div className="rounded-lg border border-hairline bg-surface-2 p-3">
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm text-fg">Capacity</span>
             <span className="font-mono text-sm text-fg-strong">{parsePercent(member.availability)}%</span>
@@ -382,16 +451,16 @@ function MemberDetail({
   );
 }
 
-function SuggestedResource({ resource, onAdd }: { resource: AllocatedResource; onAdd: () => void }) {
+function SuggestedResource({ resource, disabled, onAdd }: { resource: AllocatedResource; disabled: boolean; onAdd: () => void }) {
   return (
-    <div className="rounded-xl border border-hairline bg-surface-2 p-4">
+    <div className="rounded-lg border border-hairline bg-surface-2 p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-fg-strong">{resource.name}</div>
-          <div className="mt-1 truncate text-xs text-fg-muted">{resource.title || resource.resource_type.replace(/_/g, " ")}</div>
+          <div className="mt-1 truncate text-xs text-fg-muted">{resource.title || formatLabel(resource.resource_type)}</div>
         </div>
-        <Button size="sm" variant="secondary" onClick={onAdd}>
-          <UserRoundPlus className="h-4 w-4" />
+        <Button size="sm" variant="secondary" disabled={disabled} onClick={onAdd}>
+          <UserRoundPlus />
           Add
         </Button>
       </div>
@@ -400,7 +469,7 @@ function SuggestedResource({ resource, onAdd }: { resource: AllocatedResource; o
         {Math.round(resource.allocation_percentage * 100)}% suggested allocation
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
-        {resource.skills.slice(0, 4).map((skill) => <Badge key={skill}>{skill}</Badge>)}
+        {resource.skills.slice(0, 4).map((skill) => <Badge key={skill}>{formatLabel(skill)}</Badge>)}
       </div>
     </div>
   );
@@ -409,7 +478,7 @@ function SuggestedResource({ resource, onAdd }: { resource: AllocatedResource; o
 function Avatar({ name, large = false }: { name: string; large?: boolean }) {
   const initials = name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
   return (
-    <div className={large ? "grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-hairline bg-surface-2 font-semibold text-accent" : "grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-hairline bg-surface-1 font-semibold text-accent"}>
+    <div className={large ? "grid h-12 w-12 shrink-0 place-items-center rounded-lg border border-hairline bg-surface-2 font-semibold text-accent" : "grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-hairline bg-surface-1 font-semibold text-accent"}>
       {initials}
     </div>
   );
@@ -421,7 +490,7 @@ function ReadinessBadge({ value }: { value: TeamMember["aiReadiness"] }) {
     : value === "active"
       ? "border-hairline bg-surface-1 text-fg"
       : "border-warn/30 bg-surface-1 text-warn";
-  return <span className={`rounded-full border px-2 py-0.5 text-xs ${cls}`}>{value}</span>;
+  return <Badge className={cls}>{value}</Badge>;
 }
 
 function Editable({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
@@ -431,6 +500,36 @@ function Editable({ label, value, onChange }: { label: string; value: string; on
       <Input value={value} onChange={(event) => onChange(event.target.value)} />
     </label>
   );
+}
+
+function fromApiTeamMember(member: PortalTeamMember): TeamMember {
+  return {
+    id: member.id,
+    name: member.name,
+    role: member.role,
+    experience: member.experience,
+    aiReadiness: normalizeReadiness(member.aiReadiness),
+    availability: member.availability,
+    skills: normalizeSkills(member.skills),
+    assignment: member.currentProject || "Available",
+  };
+}
+
+function toApiTeamMember(member: Omit<TeamMember, "id"> | TeamMember) {
+  return {
+    name: member.name.trim(),
+    role: member.role.trim(),
+    experience: member.experience.trim() || "Not set",
+    ai_readiness: member.aiReadiness,
+    skills: member.skills.map(formatLabel).join(", ") || "General delivery",
+    availability: member.availability.trim() || "50%",
+    current_project: member.assignment.trim() || "Available",
+  };
+}
+
+function normalizeReadiness(value: string): TeamMember["aiReadiness"] {
+  if (value === "advanced" || value === "active" || value === "learning") return value;
+  return "active";
 }
 
 function normalizeSkills(value: string) {
@@ -443,13 +542,8 @@ function parsePercent(value: string) {
   return Math.max(0, Math.min(100, Math.round(num)));
 }
 
-function readTeam() {
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    return raw ? JSON.parse(raw) as TeamMember[] : initialTeam;
-  } catch {
-    return initialTeam;
-  }
+function formatLabel(value: string) {
+  return value.replace(/_/g, " ");
 }
 
 function updateMember(setTeam: Dispatch<SetStateAction<TeamMember[]>>, id: string, patch: Partial<TeamMember>) {

@@ -11,9 +11,19 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api import artifacts as artifacts_router
+from app.api import audit as audit_router
+from app.api import chat as chat_router
+from app.api import dashboard as dashboard_router
 from app.api import demand as demand_router
+from app.api import github as github_router
+from app.api import notifications as notifications_router
+from app.api import portal as portal_router
 from app.api import projects as projects_router
+from app.api import reports as reports_router
 from app.api import settings as settings_router
+from app.api import swon as swon_router
+from app.api import tasks as tasks_router
+from app.api import won as won_router
 from app.api import ws as ws_router
 
 logging.basicConfig(
@@ -40,6 +50,9 @@ class NoCacheStaticMiddleware(BaseHTTPMiddleware):
 
 
 def create_app() -> FastAPI:
+    from app.db.audit import install_audit_hooks
+    install_audit_hooks()
+
     app = FastAPI(title="ForgeOS", version="0.1.0", description="Demand-to-Delivery AI OS")
 
     app.add_middleware(NoCacheStaticMiddleware)
@@ -54,7 +67,17 @@ def create_app() -> FastAPI:
     app.include_router(settings_router.router)
     app.include_router(demand_router.router)
     app.include_router(projects_router.router)
+    app.include_router(chat_router.router)
+    app.include_router(github_router.router)
+    app.include_router(portal_router.router)
     app.include_router(artifacts_router.router)
+    app.include_router(swon_router.router)
+    app.include_router(won_router.router)
+    app.include_router(tasks_router.router)
+    app.include_router(audit_router.router)
+    app.include_router(reports_router.router)
+    app.include_router(dashboard_router.router)
+    app.include_router(notifications_router.router)
     app.include_router(ws_router.router)
 
     if os.path.isdir(STATIC_DIR):

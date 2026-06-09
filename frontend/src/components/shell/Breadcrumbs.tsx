@@ -3,6 +3,7 @@ import { Link, useLocation, useParams } from "react-router-dom";
 function title(part: string) {
   if (part === "demands") return "Demands";
   if (part === "demand") return "Demand";
+  if (part === "requests") return "Requests";
   if (part === "models") return "Models";
   if (part === "team") return "Team";
   if (part === "settings") return "Settings";

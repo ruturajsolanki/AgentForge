@@ -57,6 +57,20 @@ CLERK_JWT_ISSUER = os.getenv("CLERK_JWT_ISSUER", "")
 CLERK_JWKS_URL = os.getenv("CLERK_JWKS_URL", "")
 DEV_AUTH_BYPASS = os.getenv("FORGEOS_DEV_AUTH_BYPASS", "true").lower() == "true"
 
+# Email (SMTP) — when host is unset, emails are captured in the demo outbox.
+SMTP_HOST = os.getenv("FORGEOS_SMTP_HOST", "")
+SMTP_PORT = int(os.getenv("FORGEOS_SMTP_PORT", "587") or "587")
+SMTP_USER = os.getenv("FORGEOS_SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("FORGEOS_SMTP_PASSWORD", "")
+EMAIL_FROM = os.getenv("FORGEOS_EMAIL_FROM", "delivery@forgeos.local")
+PUBLIC_BASE_URL = os.getenv("FORGEOS_PUBLIC_BASE_URL", "http://localhost:5173")
+
+# GitHub auto-publish during production. Disabled unless explicitly configured.
+GITHUB_AUTO_PUSH = os.getenv("FORGEOS_GITHUB_AUTO_PUSH", "false").lower() == "true"
+GITHUB_REMOTE_URL = os.getenv("FORGEOS_GITHUB_REMOTE_URL", "")
+GITHUB_TOKEN = os.getenv("FORGEOS_GITHUB_TOKEN", "")
+GITHUB_BRANCH = os.getenv("FORGEOS_GITHUB_BRANCH", "main")
+
 PROVIDER_PRESETS: dict[str, dict] = {
     "nim": {
         "base_url": NIM_API_BASE,
@@ -96,6 +110,13 @@ PROVIDER_PRESETS: dict[str, dict] = {
 }
 
 
+def _env_int(name: str, default: int, *, min_value: int = 1, max_value: int = 32) -> int:
+    try:
+        return max(min_value, min(max_value, int(os.getenv(name, str(default)))))
+    except (TypeError, ValueError):
+        return default
+
+
 class RuntimeConfig:
     """UI-mutable settings persisted to disk."""
 
@@ -131,6 +152,20 @@ class RuntimeConfig:
         self.openrouter_default_model: str = os.getenv(
             "FORGEOS_OPENROUTER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free"
         )
+        self.worker_max_jobs: int = _env_int("FORGEOS_WORKER_MAX_JOBS", 8)
+        self.agent_concurrency: int = _env_int("FORGEOS_AGENT_CONCURRENCY", 8)
+        # Email
+        self.smtp_host: str = SMTP_HOST
+        self.smtp_port: int = SMTP_PORT
+        self.smtp_user: str = SMTP_USER
+        self.smtp_password: str = SMTP_PASSWORD
+        self.email_from: str = EMAIL_FROM
+        self.public_base_url: str = PUBLIC_BASE_URL
+        # GitHub auto-publish
+        self.github_auto_push: bool = GITHUB_AUTO_PUSH
+        self.github_remote_url: str = GITHUB_REMOTE_URL
+        self.github_token: str = GITHUB_TOKEN
+        self.github_branch: str = GITHUB_BRANCH
         # Per-role model overrides — `{role: "<provider>/<model>" | "<model>"}`.
         # When set, takes precedence over the smart-router pick for that role.
         # Use a value of "" to clear an override.
@@ -167,7 +202,7 @@ class RuntimeConfig:
             "openrouter_api_key_set": bool(self.openrouter_api_key),
             "openrouter_default_model": self.openrouter_default_model,
             "fallback_active": (
-                self.llm_provider in ("nim", "vllm")
+                self.llm_provider in ("nim", "vllm", "browser")
                 and (bool(self.groq_api_key) or bool(self.openrouter_api_key))
             ),
             "fallback_chain": [
@@ -176,6 +211,8 @@ class RuntimeConfig:
                     ("openrouter", bool(self.openrouter_api_key)),
                 ) if enabled
             ],
+            "worker_max_jobs": self.worker_max_jobs,
+            "agent_concurrency": self.agent_concurrency,
             "role_overrides": dict(self.role_overrides),
         }
 
@@ -190,6 +227,13 @@ class RuntimeConfig:
         ):
             if key in data and isinstance(data[key], str):
                 setattr(self, key, data[key].strip())
+        for key in ("worker_max_jobs", "agent_concurrency"):
+            if key in data:
+                try:
+                    value = int(data[key])
+                except (TypeError, ValueError):
+                    continue
+                setattr(self, key, max(1, min(32, value)))
         if "demo_mode" in data and isinstance(data["demo_mode"], bool):
             self.demo_mode = data["demo_mode"]
 

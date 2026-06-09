@@ -24,7 +24,7 @@ class ProjectManagerAgent(BaseAgent):
         )
         self.system_prompt = (
             "You are a Project Manager AI. Decompose a software requirement into "
-            "4-6 concrete tasks. Respond with ONLY a JSON object:\n"
+            "6-10 concrete tasks with clear parallelizable workstreams. Respond with ONLY a JSON object:\n"
             '{"project_name":"slug","description":"short","tasks":['
             '{"id":"t1","title":"...","description":"...","agent":"frontend_dev",'
             '"dependencies":[],"priority":1}]}\n'
@@ -35,7 +35,7 @@ class ProjectManagerAgent(BaseAgent):
         prompt = task.get("prompt", "")
         await self.update_status(AgentStatus.WORKING, "Analysing requirements", 20)
         response = await self.llm(
-            prompt=f"Project request: {prompt}\n\nDecompose into 4-6 tasks. JSON only.",
+            prompt=f"Project request: {prompt}\n\nDecompose into 6-10 tasks. JSON only.",
             system=self.system_prompt,
         )
         await self.update_status(AgentStatus.WORKING, "Organising plan", 70)
@@ -61,11 +61,13 @@ class ProjectManagerAgent(BaseAgent):
             "description": prompt,
             "tasks": [
                 {"id": "t1", "title": "Design database schema", "description": f"Supabase tables for: {prompt}", "agent": "backend_dev", "dependencies": [], "priority": 1},
-                {"id": "t2", "title": "Build main UI", "description": f"React UI for: {prompt}", "agent": "frontend_dev", "dependencies": ["t1"], "priority": 2},
-                {"id": "t3", "title": "Wire CRUD operations", "description": "Supabase CRUD calls", "agent": "frontend_dev", "dependencies": ["t1"], "priority": 2},
-                {"id": "t4", "title": "Dockerfile + compose", "description": "Container config", "agent": "devops", "dependencies": [], "priority": 1},
-                {"id": "t5", "title": "Run tests", "description": "Validate generated code", "agent": "qa_tester", "dependencies": ["t2", "t3"], "priority": 3},
-                {"id": "t6", "title": "Write documentation", "description": "README + setup", "agent": "documentation", "dependencies": ["t2", "t3", "t4"], "priority": 4},
+                {"id": "t2", "title": "Build core UI shell", "description": f"React layout, navigation, and workflow for: {prompt}", "agent": "frontend_dev", "dependencies": [], "priority": 1},
+                {"id": "t3", "title": "Build data-driven screens", "description": "Forms, lists, dashboards, empty states, and loading states", "agent": "frontend_dev", "dependencies": ["t1", "t2"], "priority": 2},
+                {"id": "t4", "title": "Wire persistence", "description": "Supabase CRUD calls with localStorage fallback", "agent": "frontend_dev", "dependencies": ["t1"], "priority": 2},
+                {"id": "t5", "title": "Create deployment config", "description": "Dockerfile, compose, env example, and production notes", "agent": "devops", "dependencies": [], "priority": 1},
+                {"id": "t6", "title": "Add quality tests", "description": "Validate generated components, data handling, and edge cases", "agent": "qa_tester", "dependencies": ["t2", "t3", "t4"], "priority": 3},
+                {"id": "t7", "title": "Review delivery readiness", "description": "Check security, setup gaps, and broken imports", "agent": "qa_tester", "dependencies": ["t3", "t5"], "priority": 3},
+                {"id": "t8", "title": "Write documentation", "description": "README, setup instructions, and handoff notes", "agent": "documentation", "dependencies": ["t2", "t3", "t5"], "priority": 4},
             ],
         }
 

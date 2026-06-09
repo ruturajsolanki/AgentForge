@@ -13,6 +13,10 @@ set -u
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 LOG_DIR="$ROOT/.boot/logs"
 PID_DIR="$ROOT/.boot/pids"
+API_PORT="${FORGEOS_API_PORT:-8000}"
+FRONTEND_PORT="${FORGEOS_FRONTEND_PORT:-5173}"
+API_URL="http://127.0.0.1:${API_PORT}"
+FRONTEND_URL="http://localhost:${FRONTEND_PORT}"
 mkdir -p "$LOG_DIR" "$PID_DIR"
 
 # ── ANSI palette ───────────────────────────────────────────────────────
@@ -86,6 +90,22 @@ wait_for_url() {
     i=$((i+1))
   done
   return 1
+}
+
+forgeos_backend_healthy() {
+  local base="$1"
+  local health schema
+  health=$(curl -s -f --max-time 1 "${base}/api/health" 2>/dev/null) || return 1
+  [[ "$health" == *'"status":"ok"'* ]] || return 1
+  schema=$(curl -s -f --max-time 1 "${base}/openapi.json" 2>/dev/null) || return 1
+  [[ "$schema" == *'"title":"ForgeOS"'* ]]
+}
+
+forgeos_frontend_healthy() {
+  local url="$1"
+  local html
+  html=$(curl -s -f --max-time 1 "$url" 2>/dev/null) || return 1
+  [[ "$html" == *"<title>AgentForge</title>"* ]]
 }
 
 # Wait for a TCP host:port to accept connections.
@@ -228,19 +248,23 @@ asyncio.run(ping())
   start_spinner "launching backend api  ${GREY}(fastapi · uvicorn)${RESET}"
   if pid_alive "$PID_DIR/backend.pid"; then
     stop_spinner ok "backend already running (pid $(cat "$PID_DIR/backend.pid"))"
-  elif lsof -ti:8000 >/dev/null 2>&1 || curl -s -f -o /dev/null --max-time 1 http://127.0.0.1:8000/api/health; then
+  elif forgeos_backend_healthy "$API_URL"; then
     stop_spinner ok "backend already healthy  ${GREY}(external — not managed by start.sh)${RESET}"
+  elif lsof -ti:"$API_PORT" >/dev/null 2>&1; then
+    stop_spinner err "backend port ${API_PORT} is occupied by a non-ForgeOS service"
+    err "stop the process on ${API_PORT} or run with FORGEOS_API_PORT=<free-port>"
+    exit 1
   else
     (
       cd "$ROOT/backend"
-      nohup python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 \
+      nohup python3 -m uvicorn app.main:app --host 0.0.0.0 --port "$API_PORT" \
         >"$LOG_DIR/backend.log" 2>&1 &
       echo $! > "$PID_DIR/backend.pid"
     )
-    if ! wait_for_url "http://127.0.0.1:8000/api/health" 60; then
+    if ! wait_for_url "${API_URL}/api/health" 60; then
       stop_spinner err "backend did not become healthy"; tail -30 "$LOG_DIR/backend.log"; exit 1
     fi
-    stop_spinner ok "backend ready  ${GREY}http://127.0.0.1:8000${RESET}"
+    stop_spinner ok "backend ready  ${GREY}${API_URL}${RESET}"
   fi
 
   # 4. Worker (Arq)
@@ -269,8 +293,12 @@ asyncio.run(ping())
   start_spinner "launching frontend  ${GREY}(react · vite · tailwind)${RESET}"
   if pid_alive "$PID_DIR/frontend.pid"; then
     stop_spinner ok "frontend already running (pid $(cat "$PID_DIR/frontend.pid"))"
-  elif lsof -ti:5173 >/dev/null 2>&1; then
+  elif forgeos_frontend_healthy "$FRONTEND_URL"; then
     stop_spinner ok "frontend already healthy  ${GREY}(external — not managed by start.sh)${RESET}"
+  elif lsof -ti:"$FRONTEND_PORT" >/dev/null 2>&1; then
+    stop_spinner err "frontend port ${FRONTEND_PORT} is occupied by a non-ForgeOS service"
+    err "stop the process on ${FRONTEND_PORT} or run with FORGEOS_FRONTEND_PORT=<free-port>"
+    exit 1
   else
     if [[ ! -d "$ROOT/frontend/node_modules" ]]; then
       log "first run — installing npm deps (this takes a minute)"
@@ -279,7 +307,8 @@ asyncio.run(ping())
     fi
     (
       cd "$ROOT/frontend"
-      nohup npm run dev -- --host >"$LOG_DIR/frontend.log" 2>&1 &
+      FORGEOS_API_PORT="$API_PORT" FORGEOS_FRONTEND_PORT="$FRONTEND_PORT" \
+        nohup npm run dev -- --host 0.0.0.0 --port "$FRONTEND_PORT" >"$LOG_DIR/frontend.log" 2>&1 &
       echo $! > "$PID_DIR/frontend.pid"
     )
     # Vite prints the local URL once ready.
@@ -292,13 +321,13 @@ asyncio.run(ping())
     if (( i >= 60 )); then
       stop_spinner err "frontend did not start"; tail -30 "$LOG_DIR/frontend.log"; exit 1
     fi
-    stop_spinner ok "frontend ready  ${GREY}http://localhost:5173${RESET}"
+    stop_spinner ok "frontend ready  ${GREY}${FRONTEND_URL}${RESET}"
   fi
 
   # 6. LLM provider health
   start_spinner "verifying llm provider"
   local health
-  health=$(curl -s --max-time 8 http://127.0.0.1:8000/api/health || echo '{}')
+  health=$(curl -s --max-time 8 "${API_URL}/api/health" || echo '{}')
   local provider connected
   provider=$(echo "$health" | python3 -c "import sys,json;print(json.load(sys.stdin).get('provider','?'))" 2>/dev/null || echo "?")
   connected=$(echo "$health" | python3 -c "import sys,json;print(json.load(sys.stdin).get('provider_connected', False))" 2>/dev/null || echo "False")
@@ -312,7 +341,7 @@ asyncio.run(ping())
   if [[ "$open_browser" == "yes" ]]; then
     printf "\n  ${GREY}Launching browser in 1.5s…${RESET}\n"
     sleep 1.5
-    local url="http://localhost:5173/?boot=1"
+    local url="${FRONTEND_URL}/?boot=1"
     case "$(uname -s)" in
       Darwin*) open "$url" ;;
       Linux*)  xdg-open "$url" >/dev/null 2>&1 || true ;;
@@ -325,8 +354,8 @@ asyncio.run(ping())
 
   ${BOLD}${GREEN}▸ ForgeOS is live${RESET}
 
-  ${WHITE}Frontend${RESET}   ${CYAN}http://localhost:5173${RESET}
-  ${WHITE}API${RESET}        ${CYAN}http://localhost:8000${RESET}
+  ${WHITE}Frontend${RESET}   ${CYAN}${FRONTEND_URL}${RESET}
+  ${WHITE}API${RESET}        ${CYAN}${API_URL}${RESET}
   ${WHITE}MinIO${RESET}      ${CYAN}http://localhost:9001${RESET}  ${GREY}(forgeos / forgeospassword)${RESET}
 
   ${GREY}Logs   ${RESET}${DIM}${LOG_DIR}${RESET}

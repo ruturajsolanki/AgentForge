@@ -25,6 +25,11 @@ node_modules/
 frontend/dist/
 backend/static/
 
+# ── Test artifacts ──────────────────────────────────────────────────────
+frontend/test-results/
+frontend/playwright-report/
+.playwright/
+
 # ── Generated projects & runtime state ──────────────────────────────────
 projects/*
 !projects/.gitkeep

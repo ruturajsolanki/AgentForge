@@ -15,8 +15,8 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Optional, Sequence
 
 import httpx
 import jwt
@@ -25,7 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import CLERK_JWKS_URL, CLERK_JWT_ISSUER, DEV_AUTH_BYPASS
-from app.db.models import Tenant, User
+from app.db.models import DemandRequest, Role, Task, Tenant, User, UserRoleAssignment
 from app.db.session import get_session
 
 logger = logging.getLogger(__name__)
@@ -37,6 +37,19 @@ class AuthContext:
     tenant_id: uuid.UUID
     email: Optional[str]
     role: str
+    roles: list[str] = field(default_factory=list)
+
+    def has_role(self, slug: str) -> bool:
+        return slug in self.roles
+
+    @property
+    def max_hierarchy(self) -> int:
+        _MAP = {
+            "executive": 6, "higher_manager": 5, "manager": 4,
+            "middleware": 3, "leader": 2, "delivery_team": 2,
+            "member": 1, "contributor": 1, "viewer": 0, "client": 0,
+        }
+        return max((_MAP.get(r, 0) for r in self.roles), default=0)
 
 
 class _JWKSCache:
@@ -85,6 +98,19 @@ async def _ensure_dev_tenant(session: AsyncSession) -> tuple[Tenant, User]:
     return tenant, user
 
 
+async def _load_roles(session: AsyncSession, user_id: uuid.UUID) -> list[str]:
+    stmt = (
+        select(Role.slug)
+        .join(UserRoleAssignment, UserRoleAssignment.role_id == Role.id)
+        .where(UserRoleAssignment.user_id == user_id)
+    )
+    result = await session.execute(stmt)
+    roles = [row[0] for row in result.all()]
+    if not roles:
+        roles = ["manager"]
+    return roles
+
+
 async def _resolve_clerk_user(
     session: AsyncSession, payload: dict
 ) -> tuple[Tenant, User]:
@@ -129,11 +155,13 @@ async def get_auth_context(
 ) -> AuthContext:
     if DEV_AUTH_BYPASS:
         tenant, user = await _ensure_dev_tenant(session)
+        roles = await _load_roles(session, user.id)
         return AuthContext(
             user_id=user.id,
             tenant_id=tenant.id,
             email=user.email,
             role=user.role,
+            roles=roles,
         )
 
     if not authorization or not authorization.lower().startswith("bearer "):
@@ -162,13 +190,62 @@ async def get_auth_context(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, f"Invalid token: {exc}") from exc
 
     tenant, user = await _resolve_clerk_user(session, payload)
+    roles = await _load_roles(session, user.id)
     return AuthContext(
         user_id=user.id,
         tenant_id=tenant.id,
         email=user.email,
         role=user.role,
+        roles=roles,
     )
 
 
 def require_auth(ctx: AuthContext = Depends(get_auth_context)) -> AuthContext:
     return ctx
+
+
+def require_role(*slugs: str):
+    """FastAPI dependency factory — caller must hold at least one of the listed roles."""
+    async def _dep(ctx: AuthContext = Depends(get_auth_context)) -> AuthContext:
+        if not any(ctx.has_role(s) for s in slugs):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, f"Requires one of: {', '.join(slugs)}")
+        return ctx
+    return Depends(_dep)
+
+
+async def scope_filter(
+    ctx: AuthContext,
+    session: AsyncSession,
+    entity: str = "demand",
+):
+    """Return a SQLAlchemy WHERE clause that limits visibility by role.
+
+    Returns a list of filter expressions to AND onto a query.
+    """
+    if ctx.has_role("higher_manager"):
+        return [DemandRequest.tenant_id == ctx.tenant_id]
+
+    if ctx.has_role("manager"):
+        return [
+            DemandRequest.tenant_id == ctx.tenant_id,
+            (DemandRequest.assigned_manager_id == ctx.user_id)
+            | (DemandRequest.created_by == ctx.user_id),
+        ]
+
+    if ctx.has_role("middleware"):
+        return [
+            DemandRequest.tenant_id == ctx.tenant_id,
+            (DemandRequest.stage == "awaiting_approval")
+            | (DemandRequest.assigned_middleware_id == ctx.user_id),
+        ]
+
+    if ctx.has_role("leader"):
+        return [
+            DemandRequest.tenant_id == ctx.tenant_id,
+            DemandRequest.assigned_leader_id == ctx.user_id,
+        ]
+
+    if ctx.has_role("member") and entity == "task":
+        return [Task.owner_id == ctx.user_id]
+
+    return [DemandRequest.tenant_id == ctx.tenant_id, DemandRequest.created_by == ctx.user_id]

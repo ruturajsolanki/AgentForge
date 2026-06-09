@@ -193,7 +193,13 @@ class Orchestrator:
                 if r:
                     out.append(r)
             return out
-        coros = [self._run_agent(aid, ts, work_dir, context) for aid, ts in items]
+        sem = asyncio.Semaphore(max(1, settings.agent_concurrency))
+
+        async def guarded(aid: str, ts: list[dict]) -> Optional[dict]:
+            async with sem:
+                return await self._run_agent(aid, ts, work_dir, context)
+
+        coros = [guarded(aid, ts) for aid, ts in items]
         raw = await asyncio.gather(*coros, return_exceptions=True)
         return [r for r in raw if isinstance(r, dict)]
 

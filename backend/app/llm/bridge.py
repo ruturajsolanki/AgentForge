@@ -42,13 +42,18 @@ class LLMBridge:
         future: asyncio.Future[str] = loop.create_future()
         self._pending[request_id] = future
 
-        await self._ws_manager.broadcast({
+        payload = {
             "type": "llm.request",
             "request_id": request_id,
             "prompt": prompt,
             "system": system or "",
             "model": model or "",
-        })
+        }
+        if hasattr(self._ws_manager, "broadcast_all"):
+            await self._ws_manager.broadcast_all(payload)
+        else:
+            for ws in self._ws_manager.active_connections:
+                await ws.send_json(payload)
 
         try:
             return await asyncio.wait_for(future, timeout=timeout)

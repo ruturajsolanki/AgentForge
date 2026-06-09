@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Code2, Eye, FileText, Network, Terminal, UserRound } from "lucide-react";
+import { Activity, Code2, Eye, FileText, Network, Package, Terminal, UserRound } from "lucide-react";
 import { forgeApi } from "../../services/forgeApi";
 import type { Demand } from "../../types";
 import { cn } from "../../lib/cn";
@@ -8,7 +8,7 @@ import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 import type { PlanShape } from "./PlanCard";
 
-type WorkspaceTab = "plan" | "agents" | "files" | "preview" | "terminal";
+type WorkspaceTab = "plan" | "agents" | "files" | "preview" | "terminal" | "activity" | "delivery";
 
 interface DemandResource {
   demand: Demand | null;
@@ -24,6 +24,8 @@ const tabs: Array<{ id: WorkspaceTab; label: string; icon: ComponentType<{ class
   { id: "files", label: "Files", icon: Code2 },
   { id: "preview", label: "Preview", icon: Eye },
   { id: "terminal", label: "Terminal", icon: Terminal },
+  { id: "activity", label: "Activity", icon: Activity },
+  { id: "delivery", label: "Delivery", icon: Package },
 ];
 
 export function DemandWorkspace({

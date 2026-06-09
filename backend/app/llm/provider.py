@@ -31,6 +31,16 @@ def _is_retryable(exc: Exception) -> bool:
     if isinstance(exc, (httpx.ConnectError, httpx.ReadTimeout, httpx.WriteTimeout,
                         httpx.PoolTimeout, httpx.RemoteProtocolError, asyncio.TimeoutError)):
         return True
+    if isinstance(exc, RuntimeError):
+        message = str(exc).lower()
+        return any(
+            marker in message
+            for marker in (
+                "no browser connected",
+                "browser llm",
+                "model not loaded",
+            )
+        )
     return False
 
 
@@ -525,7 +535,9 @@ def get_provider(name: Optional[str] = None) -> LLMProvider:
     is_primary = (provider_name == settings.llm_provider) or (name is None)
 
     if provider_name == "browser":
-        return BrowserBridgeProvider()
+        primary = BrowserBridgeProvider()
+        chain = _build_fallback_chain()
+        return FallbackProvider(primary, chain) if chain else primary
 
     if provider_name == "ollama":
         return OllamaProvider(settings.ollama_url, settings.default_model)

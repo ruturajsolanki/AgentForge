@@ -8,6 +8,7 @@ from app.planner.decision import DecisionEngine
 from app.planner.allocation import AllocationEngine
 from app.planner.monitoring import MonitoringEngine
 from app.planner.explanation import ExplanationEngine
+from app.planner.clarification import ClarificationEngine
 from app.planner.pipeline import PlannerPipeline, planner_pipeline
 
 __all__ = [
@@ -17,6 +18,7 @@ __all__ = [
     "AllocationEngine",
     "MonitoringEngine",
     "ExplanationEngine",
+    "ClarificationEngine",
     "PlannerPipeline",
     "planner_pipeline",
 ]

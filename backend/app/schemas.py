@@ -62,15 +62,30 @@ class ProjectType(str, Enum):
 
 
 class ResourceType(str, Enum):
+    PRODUCT_MANAGER = "product_manager"
+    SOLUTION_ARCHITECT = "solution_architect"
+    BUSINESS_ANALYST = "business_analyst"
+    UX_DESIGNER = "ux_designer"
     BACKEND_ENGINEER = "backend_engineer"
     FRONTEND_ENGINEER = "frontend_engineer"
     AI_ENGINEER = "ai_engineer"
     DATA_ENGINEER = "data_engineer"
+    DEVOPS_ENGINEER = "devops_engineer"
+    QA_ENGINEER = "qa_engineer"
+    SECURITY_ENGINEER = "security_engineer"
+    TECH_WRITER = "tech_writer"
+    CRM_SPECIALIST = "crm_specialist"
+    SALES_OPS_ANALYST = "sales_ops_analyst"
     CODE_GENERATOR_AGENT = "code_generator_agent"
     CHATBOT_BUILDER_AGENT = "chatbot_builder_agent"
     DATA_ANALYST_AGENT = "data_analyst_agent"
     AUTOMATION_AGENT = "automation_agent"
+    SECURITY_AGENT = "security_agent"
+    QA_AGENT = "qa_agent"
+    DESIGN_AGENT = "design_agent"
     PARTNER_VENDOR = "partner_vendor"
+    TRAINER = "trainer"
+    AI_LEARNER = "ai_learner"
 
 
 class TaskStatus(str, Enum):
@@ -136,15 +151,32 @@ class ExecutionDecision(BaseModel):
 class AllocatedResource(BaseModel):
     resource_type: ResourceType
     name: str
+    title: Optional[str] = None
+    seniority: Optional[str] = None
     allocation_percentage: float = Field(ge=0.0, le=1.0)
     skills: list[str]
     cost_per_day: float
+    match_score: float = Field(default=0.0, ge=0.0)
+    reason: Optional[str] = None
+    # member | trainer | learner — trainers upskill the team, learners are
+    # AI-learners shadowing the delivery for training data.
+    kind: str = "member"
+    # Reallocation signal: populated when this person is already committed to
+    # another active project in the team_members table.
+    currently_allocated_to: Optional[str] = None
+    move_recommended: bool = False
+    move_probability: float = Field(default=0.0, ge=0.0, le=1.0)
+    move_importance: Optional[str] = None  # high | medium | low
+    move_rationale: Optional[str] = None
 
 
 class ResourceAllocation(BaseModel):
     team: list[AllocatedResource]
     total_daily_cost: float
     allocation_reasoning: str
+    bench_size: int = 0
+    coverage_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    uncovered_skills: list[str] = Field(default_factory=list)
 
 
 class SimilarProject(BaseModel):

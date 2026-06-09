@@ -1,10 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
-import { Outlet, useNavigate, useParams } from "react-router-dom";
+import { Link, Outlet, useNavigate, useParams } from "react-router-dom";
 import { Circle, Command as CommandIcon, LogOut } from "lucide-react";
 import { useWebSocket } from "../../hooks/useWebSocket";
 import { useShortcut } from "../../hooks/useShortcut";
 import { useSession } from "../../hooks/useSession";
 import { logout } from "../../lib/auth";
+import { roleMeta, topRole } from "../../lib/roles";
+import { Badge } from "../ui/badge";
 import type { WSEvent } from "../../types";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Button } from "../ui/button";
@@ -12,6 +14,7 @@ import { Kbd } from "../ui/kbd";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { CommandPalette } from "./CommandPalette";
 import { LeftRail } from "./LeftRail";
+import { NotificationBell } from "./NotificationBell";
 import { ShellContext } from "./ShellContext";
 
 const EVENT_BUFFER_SIZE = 500;
@@ -35,6 +38,7 @@ export function AppShell() {
 
   useShortcut("mod+k", () => setPaletteOpen(true));
   useShortcut("g d", () => navigate("/demands"));
+  useShortcut("g r", () => navigate("/requests"));
   useShortcut("g n", () => navigate("/demand/new"));
   useShortcut("g p", () => {
     if (params.id) navigate(`/demand/${params.id}/agents`);
@@ -66,9 +70,15 @@ export function AppShell() {
                   <Circle className={connected ? "h-2 w-2 fill-success text-success" : "h-2 w-2 fill-danger text-danger"} />
                   {connected ? "Live" : "Offline"}
                 </div>
-                <Avatar>
-                  <AvatarFallback>{session?.name.split(" ").map((part) => part[0]).join("").slice(0, 2) || "MO"}</AvatarFallback>
-                </Avatar>
+                <Badge variant="outline" className="hidden sm:inline-flex" data-testid="role-badge">
+                  {roleMeta(topRole(session)).label}
+                </Badge>
+                <NotificationBell />
+                <Link to="/profile" aria-label="Profile" data-testid="profile-link">
+                  <Avatar>
+                    <AvatarFallback>{session?.name.split(" ").map((part) => part[0]).join("").slice(0, 2) || "MO"}</AvatarFallback>
+                  </Avatar>
+                </Link>
                 <Button
                   variant="ghost"
                   size="sm"

@@ -29,6 +29,14 @@ class ConnectionManager:
     async def broadcast(self, tenant_id: str, payload: dict) -> None:
         async with self.lock:
             sockets = list(self.active.get(tenant_id, ()))
+        await self._send_many(sockets, payload)
+
+    async def broadcast_all(self, payload: dict) -> None:
+        async with self.lock:
+            sockets = self.all_connections
+        await self._send_many(sockets, payload)
+
+    async def _send_many(self, sockets: list[WebSocket], payload: dict) -> None:
         for ws in sockets:
             try:
                 await ws.send_json(payload)

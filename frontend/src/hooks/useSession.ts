@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { getSession, type Session } from "../lib/auth";
+import { useEffect, useState, useCallback } from "react";
+import { getSession, type Session, type UserRole } from "../lib/auth";
 
 export function useSession() {
   const [session, setSession] = useState<Session | null>(() => getSession());
@@ -15,4 +15,9 @@ export function useSession() {
   }, []);
 
   return session;
+}
+
+export function useRole(slug: UserRole): boolean {
+  const session = useSession();
+  return session?.roles?.includes(slug) ?? false;
 }
